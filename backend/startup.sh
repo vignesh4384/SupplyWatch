@@ -5,10 +5,13 @@
 mkdir -p /home/data
 export DB_PATH="/home/data/supplywatch.db"
 
+# Install dependencies (Azure may not preserve the CI venv)
+pip install -r requirements.txt
+
 # Azure sets PORT env var; default to 8000 if not set
 PORT="${PORT:-8000}"
 
-python -m gunicorn main:app \
+gunicorn main:app \
     --worker-class uvicorn.workers.UvicornWorker \
     --bind "0.0.0.0:$PORT" \
     --timeout 120 \
