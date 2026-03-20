@@ -83,9 +83,9 @@ async def fetch_gdelt() -> tuple[list[dict], list[dict]]:
                     logger.warning(f"GDELT query '{qcfg['q'][:30]}' failed: {e}")
                     continue
 
-                # Rate limit: GDELT allows ~1 request per 5-10 seconds
+                # Rate limit: GDELT free API throttles aggressively
                 if qcfg != QUERIES[-1]:
-                    await asyncio.sleep(6)
+                    await asyncio.sleep(30)
 
         logger.info(f"GDELT: {len(alerts)} alerts, {len(zones)} zones")
     except Exception as e:
