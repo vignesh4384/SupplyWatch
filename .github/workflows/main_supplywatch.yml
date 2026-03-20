@@ -9,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
 
     steps:
       - uses: actions/checkout@v4
@@ -20,21 +23,23 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          cd backend
           python -m venv antenv
           source antenv/bin/activate
           pip install -r requirements.txt
+
+      - name: Zip artifact for deployment
+        run: |
+          cd ${{ github.workspace }}/backend
+          zip -r ${{ github.workspace }}/release.zip . \
+            -x './antenv/*' './.env' './supplywatch.db' './__pycache__/*' \
+               './engine/__pycache__/*' './fetchers/__pycache__/*' \
+               './routers/__pycache__/*' './services/__pycache__/*'
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: |
-            backend/
-            !backend/antenv/
-            !backend/.env
-            !backend/supplywatch.db
-            !backend/__pycache__/
+          path: ${{ github.workspace }}/release.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -52,4 +57,4 @@ jobs:
           app-name: 'SupplyWatch'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_SUPPLYWATCH }}
-          package: backend
+          package: release.zip
