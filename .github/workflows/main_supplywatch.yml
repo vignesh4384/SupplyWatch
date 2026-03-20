@@ -52,3 +52,4 @@ jobs:
           app-name: 'SupplyWatch'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_SUPPLYWATCH }}
+          package: backend
