@@ -31,7 +31,7 @@ jobs:
         run: |
           cd ${{ github.workspace }}/backend
           zip -r ${{ github.workspace }}/release.zip . \
-            -x './antenv/*' './.env' './supplywatch.db' './__pycache__/*' \
+            -x './.env' './supplywatch.db' './__pycache__/*' \
                './engine/__pycache__/*' './fetchers/__pycache__/*' \
                './routers/__pycache__/*' './services/__pycache__/*'
 
