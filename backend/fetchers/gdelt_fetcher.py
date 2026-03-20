@@ -2,6 +2,7 @@
 
 import logging
 import hashlib
+import asyncio
 from datetime import datetime, timezone
 import httpx
 
@@ -81,6 +82,10 @@ async def fetch_gdelt() -> tuple[list[dict], list[dict]]:
                 except Exception as e:
                     logger.warning(f"GDELT query '{qcfg['q'][:30]}' failed: {e}")
                     continue
+
+                # Rate limit: GDELT allows ~1 request per 5-10 seconds
+                if qcfg != QUERIES[-1]:
+                    await asyncio.sleep(6)
 
         logger.info(f"GDELT: {len(alerts)} alerts, {len(zones)} zones")
     except Exception as e:
