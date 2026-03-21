@@ -9,3 +9,5 @@ venv/
 node_modules/
 dist/
 .claude/
+SupplyWatch_Requirements.docx
+api key.txt

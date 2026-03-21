@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SupplyWatch — Control Tower v6</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+
+  :root{
+    --high:#ef4444;--medium:#f59e0b;--low:#10b981;
+    --geo:#a855f7;--cyber:#3b82f6;--maritime:#06b6d4;
+    --purple:#7c3aed;--purple-light:#a78bfa;
+    --radius:14px;--radius-sm:10px;--radius-xs:8px;
+    --transition:.2s ease;
+  }
+
+  /* ═══════ DARK THEME (Stakent-inspired) ═══════ */
+  [data-theme="dark"]{
+    --bg:#0f0f15;
+    --bg-card:#1a1a24;
+    --bg-card-hover:#1f1f2c;
+    --bg-input:#15151e;
+    --border:rgba(255,255,255,0.06);
+    --border-hover:rgba(255,255,255,0.12);
+    --shadow:none;
+    --shadow-hover:0 4px 24px rgba(0,0,0,0.3);
+    --text:#f5f5f7;
+    --text-2:#c8c8d0;
+    --text-muted:#8888a0;
+    --text-dim:#5c5c72;
+    --header-bg:#121218;
+    --header-border:rgba(255,255,255,0.06);
+    --accent:#7c3aed;
+    --accent-soft:rgba(124,58,237,0.12);
+    --badge-high-bg:rgba(239,68,68,0.12);--badge-high-border:rgba(239,68,68,0.2);--badge-high-text:#f87171;
+    --badge-med-bg:rgba(245,158,11,0.12);--badge-med-border:rgba(245,158,11,0.2);--badge-med-text:#fbbf24;
+    --badge-low-bg:rgba(16,185,129,0.12);--badge-low-border:rgba(16,185,129,0.2);--badge-low-text:#34d399;
+    --chg-up:#f87171;--chg-down:#34d399;
+    --chg-up-bg:rgba(239,68,68,0.08);--chg-down-bg:rgba(16,185,129,0.08);
+    --bar-track:rgba(255,255,255,0.04);
+    --sidebar-bg:#121218;
+    --pill-bg:rgba(255,255,255,0.04);
+    --ring-track:rgba(255,255,255,0.06);
+    --score-color:#fff;
+    --map-bg:#0c0c12;
+  }
+
+  /* ═══════ LIGHT THEME (Virtual Dashboard-inspired) ═══════ */
+  [data-theme="light"]{
+    --bg:#ede9f7;
+    --bg-card:#ffffff;
+    --bg-card-hover:#ffffff;
+    --bg-input:#f4f1fb;
+    --border:rgba(124,58,237,0.08);
+    --border-hover:rgba(124,58,237,0.16);
+    --shadow:0 2px 12px rgba(100,40,200,0.06);
+    --shadow-hover:0 6px 24px rgba(100,40,200,0.10);
+    --text:#1a1032;
+    --text-2:#2c2048;
+    --text-muted:#6b5f82;
+    --text-dim:#9488aa;
+    --header-bg:linear-gradient(135deg,#6c2bd9 0%,#8b5cf6 40%,#a78bfa 100%);
+    --header-border:transparent;
+    --accent:#7c3aed;
+    --accent-soft:rgba(124,58,237,0.08);
+    --badge-high-bg:#fef2f2;--badge-high-border:#fca5a5;--badge-high-text:#dc2626;
+    --badge-med-bg:#fffbeb;--badge-med-border:#fcd34d;--badge-med-text:#b45309;
+    --badge-low-bg:#ecfdf5;--badge-low-border:#6ee7b7;--badge-low-text:#047857;
+    --chg-up:#dc2626;--chg-down:#047857;
+    --chg-up-bg:rgba(220,38,38,0.06);--chg-down-bg:rgba(4,120,87,0.06);
+    --bar-track:rgba(124,58,237,0.08);
+    --sidebar-bg:#ffffff;
+    --pill-bg:#f4f1fb;
+    --ring-track:rgba(124,58,237,0.12);
+    --score-color:#1a1032;
+    --map-bg:#e4dff0;
+    --high:#dc2626;--medium:#b45309;--low:#047857;
+  }
+
+  /* ═══════ BASE ═══════ */
+  body{
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    background:var(--bg);color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;min-height:100vh;
+    transition:background .35s ease,color .25s ease;
+  }
+
+  /* ═══════ CARD ═══════ */
+  .card{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    transition:all var(--transition);
+  }
+  .card:hover{
+    border-color:var(--border-hover);
+    box-shadow:var(--shadow-hover);
+    transform:translateY(-2px);
+  }
+  .card-sm{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    box-shadow:var(--shadow);
+    transition:all var(--transition);
+  }
+  .card-sm:hover{
+    border-color:var(--border-hover);
+    box-shadow:var(--shadow-hover);
+    transform:translateY(-2px);
+  }
+
+  /* ═══════ HEADER ═══════ */
+  .header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 32px;
+    background:var(--header-bg);
+    border-bottom:1px solid var(--header-border);
+    position:sticky;top:0;z-index:100;
+    transition:all .35s ease;
+  }
+  .header-left{display:flex;align-items:center;gap:14px}
+  .header-logo{font-family:'Syne';font-weight:800;font-size:20px;letter-spacing:-.3px}
+  [data-theme="dark"] .header-logo{color:#fff}
+  [data-theme="light"] .header-logo{color:#fff}
+  .header-div{width:1px;height:20px}
+  [data-theme="dark"] .header-div{background:rgba(255,255,255,0.1)}
+  [data-theme="light"] .header-div{background:rgba(255,255,255,0.3)}
+  .header-sub{font-size:10px;text-transform:uppercase;letter-spacing:2.5px;font-weight:500}
+  [data-theme="dark"] .header-sub{color:var(--text-dim)}
+  [data-theme="light"] .header-sub{color:rgba(255,255,255,0.7)}
+  .header-right{display:flex;align-items:center;gap:14px}
+  .header-time{font-family:'DM Mono';font-size:10px}
+  [data-theme="dark"] .header-time{color:var(--text-dim)}
+  [data-theme="light"] .header-time{color:rgba(255,255,255,0.6)}
+
+  .live-badge{
+    display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:700;
+    text-transform:uppercase;letter-spacing:1.5px;
+    padding:4px 12px;border-radius:20px;
+  }
+  [data-theme="dark"] .live-badge{color:#34d399;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2)}
+  [data-theme="light"] .live-badge{color:#fff;background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.25)}
+  .live-dot{width:6px;height:6px;border-radius:50%;animation:pulse 2s ease-in-out infinite}
+  [data-theme="dark"] .live-dot{background:#34d399}
+  [data-theme="light"] .live-dot{background:#fff}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.6)}}
+
+  .theme-toggle{
+    display:flex;gap:2px;padding:3px;border-radius:var(--radius-xs);
+    border:1px solid var(--border);background:var(--pill-bg);cursor:pointer;
+  }
+  [data-theme="light"] .theme-toggle{border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.15)}
+  .theme-btn{
+    padding:4px 8px;border-radius:6px;border:none;font-size:13px;
+    cursor:pointer;background:transparent;line-height:1;transition:all .15s;
+  }
+  [data-theme="dark"] .theme-btn.active{background:rgba(255,255,255,0.08)}
+  [data-theme="light"] .theme-btn.active{background:rgba(255,255,255,0.25)}
+
+  .view-toggle{
+    display:flex;gap:2px;padding:3px;border-radius:var(--radius-xs);
+    border:1px solid var(--border);background:var(--pill-bg);
+  }
+  [data-theme="light"] .view-toggle{border-color:rgba(255,255,255,0.2);background:rgba(255,255,255,0.15)}
+  .view-btn{
+    padding:5px 16px;border-radius:6px;border:none;font-size:11px;font-weight:600;
+    cursor:pointer;font-family:'Inter';background:transparent;transition:all .15s;
+  }
+  [data-theme="dark"] .view-btn{color:var(--text-dim)}
+  [data-theme="dark"] .view-btn.active{background:var(--accent);color:#fff}
+  [data-theme="light"] .view-btn{color:rgba(255,255,255,0.6)}
+  [data-theme="light"] .view-btn.active{background:rgba(255,255,255,0.25);color:#fff}
+
+  /* ═══════ MAIN ═══════ */
+  .main{padding:28px 32px;max-width:1600px;margin:0 auto}
+
+  /* ═══════ HERO ═══════ */
+  .hero{display:flex;justify-content:center;padding:36px 0 20px}
+  .hero-center{position:relative;padding:36px 52px;text-align:center;min-width:280px}
+  .hero-ring{position:absolute;inset:-24px;pointer-events:none;z-index:0}
+  .hero-ring svg{width:100%;height:100%}
+  .ring-bg{fill:none;stroke:var(--ring-track);stroke-width:2}
+  .ring-progress{fill:none;stroke:url(#ringGrad);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:440;stroke-dashoffset:123}
+  .hero-score{
+    font-family:'DM Mono';font-size:76px;font-weight:500;line-height:1;
+    color:var(--score-color);position:relative;z-index:1;letter-spacing:-2px;
+  }
+  .hero-label{font-family:'Syne';font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:3px;color:var(--text-dim);margin-top:8px;position:relative;z-index:1}
+  .hero-badge{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:4px 14px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.8px;
+    background:var(--badge-high-bg);color:var(--badge-high-text);border:1px solid var(--badge-high-border);
+    margin-top:12px;position:relative;z-index:1;
+  }
+  .hero-trend{font-family:'DM Mono';font-size:11px;color:var(--chg-up);margin-top:8px;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:4px}
+
+  /* Risk pills */
+  .risk-row{display:flex;justify-content:center;gap:12px;margin:24px 0 28px}
+  .risk-pill{
+    display:flex;align-items:center;gap:8px;
+    padding:10px 20px;border-radius:var(--radius-sm);
+    background:var(--bg-card);border:1px solid var(--border);
+    box-shadow:var(--shadow);transition:all var(--transition);
+  }
+  .risk-pill:hover{transform:translateY(-1px);box-shadow:var(--shadow-hover)}
+  .pill-dot{width:8px;height:8px;border-radius:50%}
+  .pill-num{font-family:'DM Mono';font-size:20px;font-weight:500}
+  .pill-label{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px}
+
+  /* Sparkline */
+  .spark-wrap{display:flex;justify-content:center;margin-bottom:32px}
+  .spark-track{
+    display:flex;align-items:flex-end;gap:3px;height:28px;
+    padding:6px 14px;border-radius:var(--radius-xs);
+    background:var(--bg-card);border:1px solid var(--border);
+  }
+  .spark-i{width:5px;border-radius:2px;transition:opacity .15s}
+  .spark-track:hover .spark-i{opacity:.4}
+  .spark-track:hover .spark-i:hover{opacity:1}
+
+  /* ═══════ KPI SECTION ═══════ */
+  .kpi-section{margin-bottom:8px}
+  .kpi-section + .kpi-section{padding-top:20px}
+
+  .section-title{
+    font-family:'Syne';font-size:10px;font-weight:700;text-transform:uppercase;
+    letter-spacing:3px;color:var(--text-dim);margin-bottom:14px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .section-title::before{content:'';width:3px;height:12px;border-radius:2px}
+  .section-title.energy::before{background:var(--medium)}
+  .section-title.freight::before{background:var(--cyber)}
+  .section-title.materials::before{background:var(--geo)}
+  .section-title.inflation::before{background:var(--high)}
+  .section-title.economic::before{background:var(--low)}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:8px}
+
+  .kpi-card{padding:18px 20px;cursor:pointer}
+  .kpi-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .kpi-name{font-size:12px;color:var(--text-muted);font-weight:500}
+  .badge{
+    font-size:9px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:.6px;
+  }
+  .badge.high{background:var(--badge-high-bg);color:var(--badge-high-text);border:1px solid var(--badge-high-border)}
+  .badge.medium{background:var(--badge-med-bg);color:var(--badge-med-text);border:1px solid var(--badge-med-border)}
+  .badge.low{background:var(--badge-low-bg);color:var(--badge-low-text);border:1px solid var(--badge-low-border)}
+  .kpi-val{font-family:'DM Mono';font-size:28px;font-weight:500;line-height:1.2;letter-spacing:-.5px;color:var(--text)}
+  .kpi-unit{font-size:12px;color:var(--text-dim);font-family:'Inter';font-weight:400}
+  .kpi-bot{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+  .kpi-chg{font-family:'DM Mono';font-size:10px;display:flex;align-items:center;gap:2px;padding:2px 6px;border-radius:4px;font-weight:500}
+  .kpi-chg.up{color:var(--chg-up);background:var(--chg-up-bg)}
+  .kpi-chg.down{color:var(--chg-down);background:var(--chg-down-bg)}
+  .kpi-date{font-size:10px;color:var(--text-dim);font-family:'DM Mono'}
+
+  /* ═══════ BOTTOM SPLIT ═══════ */
+  .bottom-split{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;margin-top:24px}
+  .panel{padding:22px 24px}
+  .panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .panel-title{font-family:'Syne';font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;color:var(--text-2)}
+  .panel-count{font-family:'DM Mono';font-size:10px;background:var(--pill-bg);padding:3px 10px;border-radius:6px;color:var(--text-dim);border:1px solid var(--border)}
+
+  /* Alerts */
+  .alert-list{display:flex;flex-direction:column;gap:1px;max-height:360px;overflow-y:auto}
+  .alert-item{display:flex;align-items:flex-start;gap:12px;padding:9px 10px;border-radius:var(--radius-xs);transition:background .15s;cursor:pointer}
+  .alert-item:hover{background:var(--pill-bg)}
+  .a-dot{width:7px;height:7px;border-radius:50%;margin-top:5px;flex-shrink:0}
+  .a-dot.crit{background:var(--high)}
+  .a-dot.warn{background:var(--medium)}
+  .a-dot.info{background:var(--cyber)}
+  .a-content{flex:1}
+  .a-title{font-size:12.5px;font-weight:500;margin-bottom:4px;line-height:1.4;color:var(--text-2)}
+  .a-meta{display:flex;gap:8px;align-items:center;font-size:10px;color:var(--text-dim)}
+  .a-src{font-size:8px;font-weight:700;padding:2px 6px;border-radius:4px;background:var(--pill-bg);color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;border:1px solid var(--border)}
+
+  .right-col{display:flex;flex-direction:column;gap:14px}
+
+  /* Domain bars */
+  .domain-list{display:flex;flex-direction:column;gap:12px}
+  .d-row{display:grid;grid-template-columns:90px 1fr 34px;align-items:center;gap:12px}
+  .d-name{font-size:11px;color:var(--text-muted);font-weight:500}
+  .d-track{height:6px;background:var(--bar-track);border-radius:3px;overflow:hidden}
+  .d-fill{height:100%;border-radius:3px}
+  .d-fill.fh{background:linear-gradient(90deg,#dc2626,#f87171)}
+  .d-fill.fm{background:linear-gradient(90deg,#d97706,#fbbf24)}
+  .d-fill.fl{background:linear-gradient(90deg,#059669,#34d399)}
+  .d-score{font-family:'DM Mono';font-size:12px;font-weight:500;text-align:right}
+
+  /* Routes */
+  .route-list{display:flex;flex-direction:column;gap:6px}
+  .route-item{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;cursor:pointer}
+  .r-info{display:flex;flex-direction:column;gap:2px}
+  .r-name{font-size:12px;font-weight:600;color:var(--text-2)}
+  .r-desc{font-size:10px;color:var(--text-dim)}
+  .r-status{font-size:8px;font-weight:700;padding:4px 10px;border-radius:6px;text-transform:uppercase;letter-spacing:.6px}
+  .r-status.normal{background:var(--badge-low-bg);color:var(--badge-low-text);border:1px solid var(--badge-low-border)}
+  .r-status.disrupted{background:var(--badge-med-bg);color:var(--badge-med-text);border:1px solid var(--badge-med-border)}
+  .r-status.critical{background:var(--badge-high-bg);color:var(--badge-high-text);border:1px solid var(--badge-high-border)}
+
+  /* ═══════ MAP VIEW ═══════ */
+  .map-layout{display:none;height:calc(100vh - 53px)}
+  .map-layout.active{display:flex}
+  .dashboard-layout{display:block}
+
+  .map-sidebar{
+    width:300px;background:var(--sidebar-bg);
+    border-right:1px solid var(--border);padding:20px 18px;overflow-y:auto;flex-shrink:0;
+    transition:background .35s ease;
+  }
+  .map-container{flex:1;position:relative;overflow:hidden;background:var(--map-bg);transition:background .35s ease}
+  .map-dots{
+    position:absolute;inset:0;
+    background:
+      radial-gradient(circle 10px at 30% 34%,rgba(16,185,129,.5) 0%,rgba(16,185,129,.06) 35%,transparent 60%),
+      radial-gradient(circle 14px at 52% 27%,rgba(168,85,247,.6) 0%,rgba(168,85,247,.08) 40%,transparent 70%),
+      radial-gradient(circle 12px at 75% 41%,rgba(245,158,11,.6) 0%,rgba(245,158,11,.08) 40%,transparent 70%),
+      radial-gradient(circle 16px at 45% 37%,rgba(239,68,68,.7) 0%,rgba(239,68,68,.08) 40%,transparent 70%),
+      radial-gradient(circle 8px at 85% 34%,rgba(16,185,129,.45) 0%,rgba(16,185,129,.05) 30%,transparent 55%),
+      radial-gradient(circle 10px at 58% 52%,rgba(245,158,11,.45) 0%,rgba(245,158,11,.05) 30%,transparent 55%),
+      radial-gradient(circle 9px at 65% 31%,rgba(168,85,247,.45) 0%,rgba(168,85,247,.05) 30%,transparent 55%),
+      radial-gradient(circle 7px at 42% 47%,rgba(239,68,68,.4) 0%,rgba(239,68,68,.05) 30%,transparent 50%),
+      radial-gradient(circle 6px at 20% 54%,rgba(6,182,212,.4) 0%,rgba(6,182,212,.05) 30%,transparent 50%),
+      radial-gradient(circle 10px at 70% 54%,rgba(6,182,212,.5) 0%,rgba(6,182,212,.06) 30%,transparent 55%);
+  }
+  .map-layer-bar{
+    position:absolute;top:14px;left:50%;transform:translateX(-50%);
+    display:flex;gap:2px;border-radius:var(--radius-sm);padding:3px;z-index:10;
+    background:var(--bg-card);border:1px solid var(--border);box-shadow:var(--shadow);
+  }
+  .layer-btn{
+    padding:6px 14px;border:none;border-radius:var(--radius-xs);font-size:10px;font-weight:600;
+    cursor:pointer;background:transparent;font-family:'Inter';transition:all .15s;
+    color:var(--text-dim);
+  }
+  .layer-btn.active{background:var(--accent);color:#fff}
+  [data-theme="light"] .layer-btn.active{background:var(--accent);color:#fff}
+
+  .sb-section{margin-bottom:22px}
+  .sb-title{font-family:'Syne';font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:3px;color:var(--text-dim);margin-bottom:12px}
+  .sb-card{background:var(--pill-bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;text-align:center}
+  .hotspot-item{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:var(--radius-xs);cursor:pointer;transition:background .15s;margin-bottom:2px}
+  .hotspot-item:hover{background:var(--pill-bg)}
+  .h-rank{font-family:'DM Mono';font-size:9px;color:var(--text-dim);width:16px}
+  .h-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .h-info{flex:1}
+  .h-name{font-size:11px;font-weight:600;color:var(--text-2)}
+  .h-type{font-size:8px;color:var(--text-dim)}
+  .h-score{font-family:'DM Mono';font-size:12px;font-weight:500}
+  .rc{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:var(--pill-bg);border-radius:6px;border:1px solid var(--border);margin-bottom:4px}
+  .rc span:first-child{font-size:11px;color:var(--text-2)}
+  .legend-item{display:flex;align-items:center;gap:7px;margin-bottom:5px;font-size:10px;color:var(--text-dim)}
+  .legend-dot{width:7px;height:7px;border-radius:50%}
+  .map-info{
+    position:absolute;bottom:16px;right:16px;
+    background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-xs);
+    padding:8px 14px;font-family:'DM Mono';font-size:10px;color:var(--text-dim);
+    box-shadow:var(--shadow);
+  }
+
+  ::-webkit-scrollbar{width:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/><stop offset="45%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#ef4444"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">SupplyWatch</div>
+    <div class="header-div"></div>
+    <div class="header-sub">Global Supply Chain Control Tower</div>
+  </div>
+  <div class="header-right">
+    <div class="header-time">2026-03-18 &nbsp; 14:32 UTC</div>
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <div class="theme-toggle" onclick="toggleTheme()">
+      <button class="theme-btn active" id="darkBtn">🌙</button>
+      <button class="theme-btn" id="lightBtn">☀️</button>
+    </div>
+    <div class="view-toggle">
+      <button class="view-btn active" onclick="showView('dashboard')">Dashboard</button>
+      <button class="view-btn" onclick="showView('map')">Map View</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ DASHBOARD ══════ -->
+<div class="main dashboard-layout" id="dashboardView">
+  <div class="hero">
+    <div class="hero-center card">
+      <div class="hero-ring"><svg viewBox="0 0 200 200"><circle class="ring-bg" cx="100" cy="100" r="90"/><circle class="ring-progress" cx="100" cy="100" r="90" transform="rotate(-90 100 100)"/></svg></div>
+      <div class="hero-score">72</div>
+      <div class="hero-label">Global Risk Score</div>
+      <div class="hero-badge"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12l7-7 7 7"/></svg>HIGH RISK</div>
+      <div class="hero-trend">&#9650; +4.2% <span style="color:var(--text-dim);font-size:10px;margin-left:3px">vs last week</span></div>
+    </div>
+  </div>
+
+  <div class="risk-row">
+    <div class="risk-pill"><div class="pill-dot" style="background:var(--high)"></div><div class="pill-num" style="color:var(--badge-high-text)">5</div><div class="pill-label">High Risk</div></div>
+    <div class="risk-pill"><div class="pill-dot" style="background:var(--medium)"></div><div class="pill-num" style="color:var(--badge-med-text)">8</div><div class="pill-label">Medium</div></div>
+    <div class="risk-pill"><div class="pill-dot" style="background:var(--low)"></div><div class="pill-num" style="color:var(--badge-low-text)">12</div><div class="pill-label">Low Risk</div></div>
+  </div>
+
+  <div class="spark-wrap">
+    <div class="spark-track">
+      <div class="spark-i" style="height:35%;background:var(--low)"></div><div class="spark-i" style="height:38%;background:var(--low)"></div>
+      <div class="spark-i" style="height:42%;background:var(--low)"></div><div class="spark-i" style="height:40%;background:var(--low)"></div>
+      <div class="spark-i" style="height:46%;background:var(--medium)"></div><div class="spark-i" style="height:50%;background:var(--medium)"></div>
+      <div class="spark-i" style="height:48%;background:var(--medium)"></div><div class="spark-i" style="height:52%;background:var(--medium)"></div>
+      <div class="spark-i" style="height:50%;background:var(--medium)"></div><div class="spark-i" style="height:55%;background:var(--medium)"></div>
+      <div class="spark-i" style="height:53%;background:var(--medium)"></div><div class="spark-i" style="height:58%;background:var(--medium)"></div>
+      <div class="spark-i" style="height:60%;background:var(--medium)"></div><div class="spark-i" style="height:62%;background:var(--medium)"></div>
+      <div class="spark-i" style="height:65%;background:var(--medium)"></div><div class="spark-i" style="height:63%;background:var(--medium)"></div>
+      <div class="spark-i" style="height:68%;background:var(--high)"></div><div class="spark-i" style="height:66%;background:var(--high)"></div>
+      <div class="spark-i" style="height:70%;background:var(--high)"></div><div class="spark-i" style="height:72%;background:var(--high)"></div>
+    </div>
+  </div>
+
+  <div class="kpi-section"><div class="section-title energy">Energy &amp; Fuel</div>
+    <div class="kpi-grid">
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">Brent Crude Oil</span><span class="badge high">HIGH</span></div><div class="kpi-val">$104.80 <span class="kpi-unit">USD/bbl</span></div><div class="kpi-bot"><span class="kpi-chg up">&#9650; +3.2%</span><span class="kpi-date">Mar 17</span></div></div>
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">WTI Crude Oil</span><span class="badge high">HIGH</span></div><div class="kpi-val">$98.40 <span class="kpi-unit">USD/bbl</span></div><div class="kpi-bot"><span class="kpi-chg up">&#9650; +2.8%</span><span class="kpi-date">Mar 17</span></div></div>
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">Natural Gas</span><span class="badge medium">MEDIUM</span></div><div class="kpi-val">$3.21 <span class="kpi-unit">USD/MMBtu</span></div><div class="kpi-bot"><span class="kpi-chg up">&#9650; +1.4%</span><span class="kpi-date">Mar 17</span></div></div>
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">US Gasoline</span><span class="badge medium">MEDIUM</span></div><div class="kpi-val">$3.48 <span class="kpi-unit">USD/gal</span></div><div class="kpi-bot"><span class="kpi-chg up">&#9650; +0.8%</span><span class="kpi-date">Mar 14</span></div></div>
+    </div>
+  </div>
+  <div class="kpi-section"><div class="section-title freight">Freight &amp; Shipping</div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">Baltic Dry Index</span><span class="badge medium">MEDIUM</span></div><div class="kpi-val">1,847 <span class="kpi-unit">index</span></div><div class="kpi-bot"><span class="kpi-chg down">&#9660; -2.1%</span><span class="kpi-date">Mar 17</span></div></div>
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">Shanghai SCFI</span><span class="badge low">LOW</span></div><div class="kpi-val">1,023 <span class="kpi-unit">index</span></div><div class="kpi-bot"><span class="kpi-chg down">&#9660; -0.5%</span><span class="kpi-date">Mar 14</span></div></div>
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">Air Cargo Rate</span><span class="badge medium">MEDIUM</span></div><div class="kpi-val">$3.42 <span class="kpi-unit">USD/kg</span></div><div class="kpi-bot"><span class="kpi-chg up">&#9650; +5.3%</span><span class="kpi-date">Mar 14</span></div></div>
+    </div>
+  </div>
+  <div class="kpi-section"><div class="section-title materials">Raw Materials</div>
+    <div class="kpi-grid">
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">Copper</span><span class="badge medium">MEDIUM</span></div><div class="kpi-val">$8,920 <span class="kpi-unit">USD/ton</span></div><div class="kpi-bot"><span class="kpi-chg up">&#9650; +1.8%</span><span class="kpi-date">Mar 15</span></div></div>
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">Aluminum</span><span class="badge low">LOW</span></div><div class="kpi-val">$2,340 <span class="kpi-unit">USD/ton</span></div><div class="kpi-bot"><span class="kpi-chg down">&#9660; -0.3%</span><span class="kpi-date">Mar 15</span></div></div>
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">Iron Ore</span><span class="badge low">LOW</span></div><div class="kpi-val">$118.50 <span class="kpi-unit">USD/ton</span></div><div class="kpi-bot"><span class="kpi-chg down">&#9660; -1.2%</span><span class="kpi-date">Mar 15</span></div></div>
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">Steel HRC</span><span class="badge medium">MEDIUM</span></div><div class="kpi-val">$680 <span class="kpi-unit">USD/ton</span></div><div class="kpi-bot"><span class="kpi-chg up">&#9650; +2.4%</span><span class="kpi-date">Mar 14</span></div></div>
+    </div>
+  </div>
+  <div class="kpi-section"><div class="section-title inflation">Inflation</div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">US CPI</span><span class="badge medium">MEDIUM</span></div><div class="kpi-val">3.2<span class="kpi-unit">%</span></div><div class="kpi-bot"><span class="kpi-chg up">&#9650; +0.1%</span><span class="kpi-date">Feb 2026</span></div></div>
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">EU HICP</span><span class="badge low">LOW</span></div><div class="kpi-val">2.8<span class="kpi-unit">%</span></div><div class="kpi-bot"><span class="kpi-chg down">&#9660; -0.2%</span><span class="kpi-date">Feb 2026</span></div></div>
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">PPI All Commodities</span><span class="badge high">HIGH</span></div><div class="kpi-val">248.6 <span class="kpi-unit">index</span></div><div class="kpi-bot"><span class="kpi-chg up">&#9650; +4.1%</span><span class="kpi-date">Feb 2026</span></div></div>
+    </div>
+  </div>
+  <div class="kpi-section"><div class="section-title economic">Economic Activity</div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">US PMI</span><span class="badge medium">MEDIUM</span></div><div class="kpi-val">51.2 <span class="kpi-unit">index</span></div><div class="kpi-bot"><span class="kpi-chg up">&#9650; +0.4</span><span class="kpi-date">Mar 2026</span></div></div>
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">Consumer Sentiment</span><span class="badge medium">MEDIUM</span></div><div class="kpi-val">68.4 <span class="kpi-unit">index</span></div><div class="kpi-bot"><span class="kpi-chg down">&#9660; -2.1</span><span class="kpi-date">Mar 2026</span></div></div>
+      <div class="kpi-card card-sm"><div class="kpi-top"><span class="kpi-name">Industrial Production</span><span class="badge low">LOW</span></div><div class="kpi-val">103.8 <span class="kpi-unit">index</span></div><div class="kpi-bot"><span class="kpi-chg up">&#9650; +0.2%</span><span class="kpi-date">Feb 2026</span></div></div>
+    </div>
+  </div>
+
+  <div class="bottom-split">
+    <div class="panel card">
+      <div class="panel-header"><div class="panel-title">Live Alerts</div><div class="panel-count">10 active</div></div>
+      <div class="alert-list">
+        <div class="alert-item"><div class="a-dot crit"></div><div class="a-content"><div class="a-title">Red Sea shipping attacks escalate — vessels rerouting via Cape</div><div class="a-meta"><span class="a-src">GDELT</span><span>2 hours ago</span></div></div></div>
+        <div class="alert-item"><div class="a-dot crit"></div><div class="a-content"><div class="a-title">Cyclone warning issued for Bay of Bengal — Port Chennai on alert</div><div class="a-meta"><span class="a-src">GDACS</span><span>3 hours ago</span></div></div></div>
+        <div class="alert-item"><div class="a-dot warn"></div><div class="a-content"><div class="a-title">EU imposes new tariffs on Chinese EV imports effective April 1</div><div class="a-meta"><span class="a-src">NewsAPI</span><span>5 hours ago</span></div></div></div>
+        <div class="alert-item"><div class="a-dot warn"></div><div class="a-content"><div class="a-title">Panama Canal water levels drop — transit restrictions tightened</div><div class="a-meta"><span class="a-src">GDELT</span><span>8 hours ago</span></div></div></div>
+        <div class="alert-item"><div class="a-dot info"></div><div class="a-content"><div class="a-title">Port of Shanghai reports 12% congestion increase week-over-week</div><div class="a-meta"><span class="a-src">AIS</span><span>12 hours ago</span></div></div></div>
+        <div class="alert-item"><div class="a-dot warn"></div><div class="a-content"><div class="a-title">Semiconductor supply constraints reported across Taiwan foundries</div><div class="a-meta"><span class="a-src">NewsAPI</span><span>14 hours ago</span></div></div></div>
+        <div class="alert-item"><div class="a-dot info"></div><div class="a-content"><div class="a-title">OPEC+ announces production cut extension through Q2 2026</div><div class="a-meta"><span class="a-src">NewsAPI</span><span>1 day ago</span></div></div></div>
+      </div>
+    </div>
+    <div class="right-col">
+      <div class="panel card">
+        <div class="panel-header"><div class="panel-title">Risk by Domain</div></div>
+        <div class="domain-list">
+          <div class="d-row"><span class="d-name">Geopolitical</span><div class="d-track"><div class="d-fill fh" style="width:82%"></div></div><span class="d-score" style="color:var(--badge-high-text)">82</span></div>
+          <div class="d-row"><span class="d-name">Maritime</span><div class="d-track"><div class="d-fill fh" style="width:74%"></div></div><span class="d-score" style="color:var(--badge-high-text)">74</span></div>
+          <div class="d-row"><span class="d-name">Energy</span><div class="d-track"><div class="d-fill fh" style="width:68%"></div></div><span class="d-score" style="color:var(--badge-high-text)">68</span></div>
+          <div class="d-row"><span class="d-name">Raw Materials</span><div class="d-track"><div class="d-fill fm" style="width:61%"></div></div><span class="d-score" style="color:var(--badge-med-text)">61</span></div>
+          <div class="d-row"><span class="d-name">Weather</span><div class="d-track"><div class="d-fill fm" style="width:55%"></div></div><span class="d-score" style="color:var(--badge-med-text)">55</span></div>
+          <div class="d-row"><span class="d-name">Trade Policy</span><div class="d-track"><div class="d-fill fm" style="width:48%"></div></div><span class="d-score" style="color:var(--badge-med-text)">48</span></div>
+          <div class="d-row"><span class="d-name">Cyber</span><div class="d-track"><div class="d-fill fl" style="width:35%"></div></div><span class="d-score" style="color:var(--badge-low-text)">35</span></div>
+          <div class="d-row"><span class="d-name">Labour</span><div class="d-track"><div class="d-fill fl" style="width:28%"></div></div><span class="d-score" style="color:var(--badge-low-text)">28</span></div>
+        </div>
+      </div>
+      <div class="panel card">
+        <div class="panel-header"><div class="panel-title">Trade Routes</div></div>
+        <div class="route-list">
+          <div class="route-item card-sm"><div class="r-info"><div class="r-name">Suez Canal</div><div class="r-desc">Asia — Europe via Red Sea</div></div><div class="r-status critical">Critical</div></div>
+          <div class="route-item card-sm"><div class="r-info"><div class="r-name">Strait of Hormuz</div><div class="r-desc">Persian Gulf — Indian Ocean</div></div><div class="r-status disrupted">Disrupted</div></div>
+          <div class="route-item card-sm"><div class="r-info"><div class="r-name">Cape of Good Hope</div><div class="r-desc">Asia — Europe (alternate)</div></div><div class="r-status disrupted">Disrupted</div></div>
+          <div class="route-item card-sm"><div class="r-info"><div class="r-name">Trans-Pacific</div><div class="r-desc">East Asia — North America</div></div><div class="r-status normal">Normal</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MAP VIEW ══════ -->
+<div class="map-layout" id="mapView">
+  <div class="map-sidebar">
+    <div class="sb-section">
+      <div class="sb-title">Global Summary</div>
+      <div class="sb-card">
+        <div style="font-family:'DM Mono';font-size:38px;font-weight:500;color:var(--score-color);letter-spacing:-1px">72</div>
+        <div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:2px;margin-top:4px">Overall Risk Score</div>
+        <div style="display:flex;justify-content:center;gap:14px;margin-top:12px">
+          <div style="font-size:10px"><span style="color:var(--badge-high-text);font-family:'DM Mono';font-weight:500">5</span> <span style="color:var(--text-dim)">High</span></div>
+          <div style="font-size:10px"><span style="color:var(--badge-med-text);font-family:'DM Mono';font-weight:500">8</span> <span style="color:var(--text-dim)">Med</span></div>
+          <div style="font-size:10px"><span style="color:var(--badge-low-text);font-family:'DM Mono';font-weight:500">12</span> <span style="color:var(--text-dim)">Low</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-title">Top 5 Hotspots</div>
+      <div class="hotspot-item"><span class="h-rank">01</span><div class="h-dot" style="background:var(--high)"></div><div class="h-info"><div class="h-name">Red Sea / Suez</div><div class="h-type">Maritime + Geopolitical</div></div><span class="h-score" style="color:var(--badge-high-text)">92</span></div>
+      <div class="hotspot-item"><span class="h-rank">02</span><div class="h-dot" style="background:var(--high)"></div><div class="h-info"><div class="h-name">Black Sea / Ukraine</div><div class="h-type">Geopolitical</div></div><span class="h-score" style="color:var(--badge-high-text)">88</span></div>
+      <div class="hotspot-item"><span class="h-rank">03</span><div class="h-dot" style="background:var(--high)"></div><div class="h-info"><div class="h-name">Strait of Hormuz</div><div class="h-type">Maritime + Energy</div></div><span class="h-score" style="color:var(--badge-high-text)">85</span></div>
+      <div class="hotspot-item"><span class="h-rank">04</span><div class="h-dot" style="background:var(--medium)"></div><div class="h-info"><div class="h-name">Taiwan Strait</div><div class="h-type">Geopolitical + Trade</div></div><span class="h-score" style="color:var(--badge-med-text)">72</span></div>
+      <div class="hotspot-item"><span class="h-rank">05</span><div class="h-dot" style="background:var(--medium)"></div><div class="h-info"><div class="h-name">Bay of Bengal</div><div class="h-type">Weather + Maritime</div></div><span class="h-score" style="color:var(--badge-med-text)">65</span></div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-title">Route Status</div>
+      <div class="rc"><span>Suez Canal</span><span class="r-status critical" style="font-size:7px;padding:2px 6px">Critical</span></div>
+      <div class="rc"><span>Hormuz</span><span class="r-status disrupted" style="font-size:7px;padding:2px 6px">Disrupted</span></div>
+      <div class="rc"><span>Cape Route</span><span class="r-status disrupted" style="font-size:7px;padding:2px 6px">Disrupted</span></div>
+      <div class="rc"><span>Trans-Pacific</span><span class="r-status normal" style="font-size:7px;padding:2px 6px">Normal</span></div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-title">Legend</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--high)"></div>High Risk (66-100)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--medium)"></div>Medium Risk (41-65)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--low)"></div>Low Risk (0-40)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--geo)"></div>Geopolitical</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--maritime)"></div>Maritime</div>
+    </div>
+  </div>
+  <div class="map-container">
+    <div class="map-layer-bar">
+      <button class="layer-btn active">All Risks</button><button class="layer-btn">Economic</button>
+      <button class="layer-btn">Disasters</button><button class="layer-btn">Maritime</button>
+      <button class="layer-btn">Geopolitical</button>
+    </div>
+    <div class="map-dots"></div>
+    <div class="map-info"><div>10 Active Risk Zones</div><div style="margin-top:2px">4 Trade Routes Monitored</div></div>
+  </div>
+</div>
+
+<script>
+function showView(v){
+  const d=document.getElementById('dashboardView'),m=document.getElementById('mapView'),btns=document.querySelectorAll('.view-btn');
+  if(v==='dashboard'){d.style.display='block';m.style.display='none';btns[0].classList.add('active');btns[1].classList.remove('active')}
+  else{d.style.display='none';m.style.display='flex';btns[1].classList.add('active');btns[0].classList.remove('active')}
+  window.scrollTo(0,0);
+}
+function toggleTheme(){
+  const h=document.documentElement,isDark=h.getAttribute('data-theme')==='dark';
+  h.setAttribute('data-theme',isDark?'light':'dark');
+  document.getElementById('darkBtn').classList.toggle('active',!isDark);
+  document.getElementById('lightBtn').classList.toggle('active',isDark);
+}
+document.querySelectorAll('.layer-btn').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.layer-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active')}));
+</script>
+</body>
+</html>
