@@ -39,20 +39,25 @@ function getVesselColor(props: VesselProperties): string {
 
 function createVesselIcon(props: VesselProperties): L.DivIcon {
   const color = getVesselColor(props);
-  const size = props.is_dark ? 12 : 10;
+  const dotSize = props.is_dark ? 14 : 12;
+  const hitbox = 28; // larger invisible click target
   const pulseClass = props.is_dark ? 'vessel-pulse' : '';
 
   return L.divIcon({
     className: 'vessel-marker',
-    html: `<div class="${pulseClass}" style="
-      width:${size}px;height:${size}px;
+    html: `<div style="
+      width:${hitbox}px;height:${hitbox}px;
+      display:flex;align-items:center;justify-content:center;
+      cursor:pointer;
+    "><div class="${pulseClass}" style="
+      width:${dotSize}px;height:${dotSize}px;
       background:${color};
       border-radius:50%;
       border:1.5px solid rgba(255,255,255,0.8);
       box-shadow:0 0 ${props.is_dark ? 8 : 4}px ${color}80;
-    "></div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
+    "></div></div>`,
+    iconSize: [hitbox, hitbox],
+    iconAnchor: [hitbox / 2, hitbox / 2],
   });
 }
 
@@ -141,12 +146,13 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
         const color = riskColors[zone.riskLevel];
         const r = 6 + zone.score / 14;
 
-        // Outer glow
+        // Outer glow (non-interactive so it doesn't steal vessel clicks)
         L.circleMarker([zone.lat, zone.lng], {
           radius: r + 6,
           fillColor: color,
           fillOpacity: 0.15,
           stroke: false,
+          interactive: false,
         }).addTo(group);
 
         // Inner dot
@@ -182,6 +188,10 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
     routeGroup.addTo(map);
     layerGroupsRef.current['routes'] = routeGroup;
 
+    // Vessel pane (z-index above default markers so vessels are always clickable)
+    map.createPane('vesselPane');
+    map.getPane('vesselPane')!.style.zIndex = '650';
+
     // Vessel layers
     const vesselLayer = L.layerGroup().addTo(map);
     layerGroupsRef.current['vessels'] = vesselLayer;
@@ -213,7 +223,7 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
       existing.setPopupContent(vesselPopupHtml(props));
     } else {
       // Create new marker
-      const marker = L.marker([lat, lng], { icon: createVesselIcon(props) })
+      const marker = L.marker([lat, lng], { icon: createVesselIcon(props), pane: 'vesselPane' })
         .bindPopup(vesselPopupHtml(props), { className: 'custom-popup' });
 
       // Click handler: fetch and draw vessel track
