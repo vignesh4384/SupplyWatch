@@ -29,6 +29,13 @@ def init_db():
         with open(SCHEMA_FILE) as f:
             db.executescript(f.read())
 
+        # Auto-migrate: add split count columns if missing
+        existing_cols = {r[1] for r in db.execute("PRAGMA table_info(risk_summary)").fetchall()}
+        for col in ["indicator_high_count", "indicator_medium_count", "indicator_low_count",
+                     "zone_high_count", "zone_medium_count", "zone_low_count"]:
+            if col not in existing_cols:
+                db.execute(f"ALTER TABLE risk_summary ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0")
+
         # Seed static indicators if table is empty
         count = db.execute("SELECT COUNT(*) FROM indicators").fetchone()[0]
         if count == 0:
