@@ -137,8 +137,11 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
     const map = L.map(containerRef.current, {
       center: [20, 30],
       zoom: 2.5,
+      minZoom: 2,
       zoomControl: false,
       attributionControl: false,
+      maxBounds: [[-85, -180], [85, 180]],
+      maxBoundsViscosity: 1.0,
     });
 
     // Use CartoDB Positron (English labels) with dark filter
@@ -146,6 +149,7 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
       attribution: '&copy; OpenStreetMap &copy; CARTO',
       subdomains: 'abcd',
       maxZoom: 19,
+      noWrap: true,
     }).addTo(map);
 
     // Zone bubbles by category
