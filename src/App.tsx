@@ -75,7 +75,7 @@ export default function App() {
         </div>
       )}
 
-      <AskAnalyst />
+      <AskAnalyst view={view} />
     </div>
   );
 }

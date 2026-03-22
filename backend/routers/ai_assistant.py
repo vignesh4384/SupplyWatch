@@ -18,17 +18,21 @@ router = APIRouter(prefix="/api/v1/ai", tags=["AI Assistant"])
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
 
-SYSTEM_PROMPT = """You are a maritime supply chain risk analyst for Supply Watch.
-Your role is to analyse live AIS vessel data and risk events to provide
-actionable intelligence for procurement and tendering decisions.
+SYSTEM_PROMPT = """You are SupplyWatch AI Analyst — an expert maritime supply chain risk intelligence
+advisor embedded in a global supply chain control tower.
+
+You have access to LIVE AIS vessel data and risk event tools. Use them to answer
+questions about vessel traffic, dark ships, congestion, and maritime risk.
 
 Rules:
-- Always cite specific vessel names, MMSIs, zones, and timestamps
+- Cite specific vessel names, MMSIs, zones, and timestamps when available
 - Quantify risk where possible (e.g. "3 tankers slow in Hormuz")
 - Link vessel behaviour to supply chain impact explicitly
 - If data is insufficient, say so — do not speculate
 - Keep answers concise — max 200 words unless detail is requested
-- Always end with a recommended action for the procurement team"""
+- For dashboard questions (commodity prices, risk scores), use the context provided
+- For vessel/maritime questions, use the tools to query live data
+- Format numbers clearly and use bullet points for readability"""
 
 # Tool definitions for Claude
 TOOLS = [
@@ -114,6 +118,14 @@ TOOLS = [
             },
         },
     },
+    {
+        "name": "get_dashboard_summary",
+        "description": "Returns the full dashboard context: overall risk score, commodity indicators (Brent, gas, metals), freight rates, trade route statuses, and domain scores. Use this for questions about prices, risk levels, or general supply chain state.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+        },
+    },
 ]
 
 
@@ -158,6 +170,25 @@ def _execute_tool(name: str, args: dict) -> str:
         zones = [z for z in zones if z.get("score", 0) >= min_score]
         alerts = database.get_alerts(limit=15)
         return json.dumps({"domain": domain, "min_score": min_score, "risk_zones": zones, "recent_alerts": alerts})
+
+    elif name == "get_dashboard_summary":
+        summary = database.get_summary()
+        indicators = database.get_indicators()
+        routes = database.get_routes()
+        domain_scores = database.get_domain_scores()
+        return json.dumps({
+            "overall_risk": {"score": summary.get("overallScore"), "level": summary.get("level")},
+            "domains": domain_scores,
+            "indicators": [
+                {"name": i["name"], "value": i["value"], "unit": i["unit"],
+                 "change": i["change"], "risk": i["riskLevel"], "category": i["category"]}
+                for i in indicators
+            ],
+            "trade_routes": [
+                {"name": r["name"], "status": r["status"], "description": r.get("description", "")}
+                for r in routes
+            ],
+        })
 
     return json.dumps({"error": f"Unknown tool: {name}"})
 
