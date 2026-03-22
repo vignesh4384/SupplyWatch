@@ -442,7 +442,7 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
       <div ref={containerRef} className="w-full h-full dark-tiles" />
 
       {/* Info badge */}
-      <div className="absolute bottom-4 right-4 z-[1000] bg-bg-card border border-border rounded-lg px-3.5 py-2 font-mono text-[10px] text-text-dim">
+      <div className="absolute bottom-20 right-4 z-[1000] bg-bg-card border border-border rounded-lg px-3.5 py-2 font-mono text-[10px] text-text-dim">
         <div>{zones.length} Active Risk Zones</div>
         <div className="mt-0.5">{routes.length} Trade Routes Monitored</div>
         {vesselCount > 0 && (
