@@ -126,6 +126,32 @@ TOOLS = [
             "properties": {},
         },
     },
+    {
+        "name": "get_zone_transitions",
+        "description": "Returns vessel zone transitions — ships that entered or exited a zone. Use this to answer questions like 'how many ships passed through Hormuz in the last 4 days' or 'which vessels left the red_sea zone'.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "zone": {
+                    "type": "string",
+                    "enum": ["hormuz", "red_sea", "arabian_sea", "gulf_aden"],
+                    "description": "Zone to query transitions for",
+                },
+                "direction": {
+                    "type": "string",
+                    "enum": ["entered", "exited", "both"],
+                    "description": "Filter by direction: entered, exited, or both (default both)",
+                    "default": "both",
+                },
+                "hours": {
+                    "type": "integer",
+                    "description": "Look-back window in hours (default 96 = 4 days, max 168 = 7 days)",
+                    "default": 96,
+                },
+            },
+            "required": ["zone"],
+        },
+    },
 ]
 
 
@@ -188,6 +214,19 @@ def _execute_tool(name: str, args: dict) -> str:
                 {"name": r["name"], "status": r["status"], "description": r.get("description", "")}
                 for r in routes
             ],
+        })
+
+    elif name == "get_zone_transitions":
+        zone = args.get("zone", "hormuz")
+        direction = args.get("direction", "both")
+        hours = min(args.get("hours", 96), 168)
+        transitions = database.get_zone_transitions(zone=zone, direction=direction, hours=hours)
+        counts = database.get_zone_transition_counts(zone=zone, hours=hours)
+        return json.dumps({
+            "zone": zone, "direction": direction, "hours": hours,
+            "summary": counts,
+            "total_transitions": len(transitions),
+            "transitions": transitions[:50],
         })
 
     return json.dumps({"error": f"Unknown tool: {name}"})

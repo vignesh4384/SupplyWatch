@@ -92,3 +92,19 @@ CREATE INDEX IF NOT EXISTS idx_vp_mmsi ON vessel_positions(mmsi);
 CREATE INDEX IF NOT EXISTS idx_vp_zone ON vessel_positions(zone);
 CREATE INDEX IF NOT EXISTS idx_vp_recorded ON vessel_positions(recorded_at);
 CREATE INDEX IF NOT EXISTS idx_vp_speed ON vessel_positions(speed);
+
+-- Zone transition tracking: records when a vessel moves between zones
+CREATE TABLE IF NOT EXISTS vessel_zone_transitions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    mmsi TEXT NOT NULL,
+    name TEXT,
+    ship_type_label TEXT,
+    from_zone TEXT NOT NULL,
+    to_zone TEXT,
+    transited_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_vzt_mmsi ON vessel_zone_transitions(mmsi);
+CREATE INDEX IF NOT EXISTS idx_vzt_from ON vessel_zone_transitions(from_zone);
+CREATE INDEX IF NOT EXISTS idx_vzt_to ON vessel_zone_transitions(to_zone);
+CREATE INDEX IF NOT EXISTS idx_vzt_time ON vessel_zone_transitions(transited_at);

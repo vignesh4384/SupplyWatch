@@ -279,8 +279,29 @@ def get_routes() -> list[dict]:
 # ── VESSEL POSITIONS ──
 
 def insert_vessel_position(pos: dict):
-    """Insert a vessel position, silently skip duplicates."""
+    """Insert a vessel position, silently skip duplicates. Detect zone transitions."""
     with get_db() as db:
+        # Check previous zone for this vessel to detect transitions
+        new_zone = pos.get("zone")
+        if new_zone:
+            prev = db.execute(
+                "SELECT zone FROM vessel_positions WHERE mmsi = ? ORDER BY recorded_at DESC LIMIT 1",
+                (pos["mmsi"],)
+            ).fetchone()
+            if prev and prev["zone"] and prev["zone"] != new_zone:
+                db.execute("""
+                    INSERT INTO vessel_zone_transitions (mmsi, name, ship_type_label, from_zone, to_zone, transited_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (pos["mmsi"], pos.get("name"), pos.get("ship_type_label"),
+                      prev["zone"], new_zone, pos["recorded_at"]))
+            elif not prev and new_zone:
+                # First sighting — record as entry (from_zone = NULL)
+                db.execute("""
+                    INSERT INTO vessel_zone_transitions (mmsi, name, ship_type_label, from_zone, to_zone, transited_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (pos["mmsi"], pos.get("name"), pos.get("ship_type_label"),
+                      None, new_zone, pos["recorded_at"]))
+
         db.execute("""
             INSERT OR IGNORE INTO vessel_positions
             (mmsi, name, ship_type, ship_type_label, lat, lng, speed, heading, nav_status, zone, is_dark, recorded_at)
@@ -383,6 +404,61 @@ def get_vessel_counts(zone: str | None = None, hours: int = 24) -> list[dict]:
                 ORDER BY zone, vessel_count DESC
             """, (f"-{hours}",)).fetchall()
         return [dict(r) for r in rows]
+
+
+def get_zone_transitions(zone: str | None = None, direction: str = "both", hours: int = 96) -> list[dict]:
+    """Get zone transitions. direction: 'entered', 'exited', or 'both'."""
+    with get_db() as db:
+        if zone and direction == "exited":
+            rows = db.execute("""
+                SELECT mmsi, name, ship_type_label, from_zone, to_zone, transited_at
+                FROM vessel_zone_transitions
+                WHERE from_zone = ? AND transited_at >= datetime('now', ? || ' hours')
+                ORDER BY transited_at DESC
+            """, (zone, f"-{hours}")).fetchall()
+        elif zone and direction == "entered":
+            rows = db.execute("""
+                SELECT mmsi, name, ship_type_label, from_zone, to_zone, transited_at
+                FROM vessel_zone_transitions
+                WHERE to_zone = ? AND transited_at >= datetime('now', ? || ' hours')
+                ORDER BY transited_at DESC
+            """, (zone, f"-{hours}")).fetchall()
+        elif zone:
+            rows = db.execute("""
+                SELECT mmsi, name, ship_type_label, from_zone, to_zone, transited_at
+                FROM vessel_zone_transitions
+                WHERE (from_zone = ? OR to_zone = ?) AND transited_at >= datetime('now', ? || ' hours')
+                ORDER BY transited_at DESC
+            """, (zone, zone, f"-{hours}")).fetchall()
+        else:
+            rows = db.execute("""
+                SELECT mmsi, name, ship_type_label, from_zone, to_zone, transited_at
+                FROM vessel_zone_transitions
+                WHERE transited_at >= datetime('now', ? || ' hours')
+                ORDER BY transited_at DESC
+            """, (f"-{hours}",)).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_zone_transition_counts(zone: str, hours: int = 96) -> dict:
+    """Get entry/exit counts for a zone over the time window."""
+    with get_db() as db:
+        entered = db.execute("""
+            SELECT COUNT(DISTINCT mmsi) as count
+            FROM vessel_zone_transitions
+            WHERE to_zone = ? AND transited_at >= datetime('now', ? || ' hours')
+        """, (zone, f"-{hours}")).fetchone()
+        exited = db.execute("""
+            SELECT COUNT(DISTINCT mmsi) as count
+            FROM vessel_zone_transitions
+            WHERE from_zone = ? AND transited_at >= datetime('now', ? || ' hours')
+        """, (zone, f"-{hours}")).fetchone()
+        return {
+            "zone": zone,
+            "hours": hours,
+            "entered": entered["count"] if entered else 0,
+            "exited": exited["count"] if exited else 0,
+        }
 
 
 def get_vessel_history(mmsi: str, hours: int = 24) -> list[dict]:
