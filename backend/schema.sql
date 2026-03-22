@@ -61,6 +61,12 @@ CREATE TABLE IF NOT EXISTS risk_summary (
     high_count INTEGER NOT NULL DEFAULT 0,
     medium_count INTEGER NOT NULL DEFAULT 0,
     low_count INTEGER NOT NULL DEFAULT 0,
+    indicator_high_count INTEGER NOT NULL DEFAULT 0,
+    indicator_medium_count INTEGER NOT NULL DEFAULT 0,
+    indicator_low_count INTEGER NOT NULL DEFAULT 0,
+    zone_high_count INTEGER NOT NULL DEFAULT 0,
+    zone_medium_count INTEGER NOT NULL DEFAULT 0,
+    zone_low_count INTEGER NOT NULL DEFAULT 0,
     last_updated TEXT NOT NULL DEFAULT (datetime('now')),
     trend REAL NOT NULL DEFAULT 0
 );

@@ -6,6 +6,12 @@ export const mockSummary: RiskSummary = {
   highCount: 5,
   mediumCount: 8,
   lowCount: 12,
+  indicatorHighCount: 3,
+  indicatorMediumCount: 5,
+  indicatorLowCount: 7,
+  zoneHighCount: 2,
+  zoneMediumCount: 3,
+  zoneLowCount: 5,
   lastUpdated: '2026-03-18T14:32:07Z',
   trend: 4.2,
 };

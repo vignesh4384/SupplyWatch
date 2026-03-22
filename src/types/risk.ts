@@ -10,6 +10,12 @@ export interface RiskSummary {
   highCount: number;
   mediumCount: number;
   lowCount: number;
+  indicatorHighCount: number;
+  indicatorMediumCount: number;
+  indicatorLowCount: number;
+  zoneHighCount: number;
+  zoneMediumCount: number;
+  zoneLowCount: number;
   lastUpdated: string;
   trend: number;
 }

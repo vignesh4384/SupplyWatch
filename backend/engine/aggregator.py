@@ -110,11 +110,22 @@ def compute_all():
 
     overall_score = int(weighted_sum / total_weight)
 
-    # Count risk levels across indicators + zones
-    all_levels = [ind["risk_level"] for ind in indicators] + [z["risk_level"] for z in zones]
-    high_count = sum(1 for l in all_levels if l == "HIGH")
-    medium_count = sum(1 for l in all_levels if l == "MEDIUM")
-    low_count = sum(1 for l in all_levels if l == "LOW")
+    # Count risk levels separately for indicators and zones
+    ind_levels = [ind["risk_level"] for ind in indicators]
+    zone_levels = [z["risk_level"] for z in zones]
+
+    indicator_high_count = sum(1 for l in ind_levels if l == "HIGH")
+    indicator_medium_count = sum(1 for l in ind_levels if l == "MEDIUM")
+    indicator_low_count = sum(1 for l in ind_levels if l == "LOW")
+
+    zone_high_count = sum(1 for l in zone_levels if l == "HIGH")
+    zone_medium_count = sum(1 for l in zone_levels if l == "MEDIUM")
+    zone_low_count = sum(1 for l in zone_levels if l == "LOW")
+
+    # Combined totals (backward compat)
+    high_count = indicator_high_count + zone_high_count
+    medium_count = indicator_medium_count + zone_medium_count
+    low_count = indicator_low_count + zone_low_count
 
     # Compute trend (vs previous history point)
     history = database.get_history(2)
@@ -131,6 +142,12 @@ def compute_all():
         "high_count": high_count,
         "medium_count": medium_count,
         "low_count": low_count,
+        "indicator_high_count": indicator_high_count,
+        "indicator_medium_count": indicator_medium_count,
+        "indicator_low_count": indicator_low_count,
+        "zone_high_count": zone_high_count,
+        "zone_medium_count": zone_medium_count,
+        "zone_low_count": zone_low_count,
         "last_updated": now,
         "trend": trend,
     }

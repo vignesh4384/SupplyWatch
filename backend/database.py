@@ -53,7 +53,7 @@ def init_db():
         scount = db.execute("SELECT COUNT(*) FROM risk_summary").fetchone()[0]
         if scount == 0:
             db.execute(
-                "INSERT INTO risk_summary (id, overall_score, level, high_count, medium_count, low_count, last_updated, trend) VALUES (1,50,'MEDIUM',0,5,5,?,0)",
+                "INSERT INTO risk_summary (id, overall_score, level, high_count, medium_count, low_count, indicator_high_count, indicator_medium_count, indicator_low_count, zone_high_count, zone_medium_count, zone_low_count, last_updated, trend) VALUES (1,50,'MEDIUM',0,5,5,0,3,3,0,2,2,?,0)",
                 (datetime.now(timezone.utc).isoformat(),)
             )
 
@@ -147,12 +147,25 @@ def get_domain_scores() -> list[dict]:
 def save_summary(summary: dict):
     with get_db() as db:
         db.execute("""
-            INSERT INTO risk_summary (id, overall_score, level, high_count, medium_count, low_count, last_updated, trend)
-            VALUES (1, :overall_score, :level, :high_count, :medium_count, :low_count, :last_updated, :trend)
+            INSERT INTO risk_summary (id, overall_score, level, high_count, medium_count, low_count,
+                indicator_high_count, indicator_medium_count, indicator_low_count,
+                zone_high_count, zone_medium_count, zone_low_count,
+                last_updated, trend)
+            VALUES (1, :overall_score, :level, :high_count, :medium_count, :low_count,
+                :indicator_high_count, :indicator_medium_count, :indicator_low_count,
+                :zone_high_count, :zone_medium_count, :zone_low_count,
+                :last_updated, :trend)
             ON CONFLICT(id) DO UPDATE SET
                 overall_score=excluded.overall_score, level=excluded.level,
                 high_count=excluded.high_count, medium_count=excluded.medium_count,
-                low_count=excluded.low_count, last_updated=excluded.last_updated, trend=excluded.trend
+                low_count=excluded.low_count,
+                indicator_high_count=excluded.indicator_high_count,
+                indicator_medium_count=excluded.indicator_medium_count,
+                indicator_low_count=excluded.indicator_low_count,
+                zone_high_count=excluded.zone_high_count,
+                zone_medium_count=excluded.zone_medium_count,
+                zone_low_count=excluded.zone_low_count,
+                last_updated=excluded.last_updated, trend=excluded.trend
         """, summary)
 
 
