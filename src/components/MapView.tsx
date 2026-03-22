@@ -140,8 +140,6 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
       minZoom: 2,
       zoomControl: false,
       attributionControl: false,
-      maxBounds: [[-85, -180], [85, 180]],
-      maxBoundsViscosity: 1.0,
     });
 
     // Use CartoDB Positron (English labels) with dark filter
@@ -149,7 +147,6 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
       attribution: '&copy; OpenStreetMap &copy; CARTO',
       subdomains: 'abcd',
       maxZoom: 19,
-      noWrap: true,
     }).addTo(map);
 
     // Zone bubbles by category
@@ -443,7 +440,7 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
       </div>
 
       {/* Map container */}
-      <div ref={containerRef} className="w-full h-full dark-tiles" />
+      <div ref={containerRef} className="w-full h-full dark-tiles" style={{ background: '#0c0c12' }} />
 
       {/* Info badge */}
       <div className="absolute bottom-20 right-4 z-[1000] bg-bg-card border border-border rounded-lg px-3.5 py-2 font-mono text-[10px] text-text-dim">
