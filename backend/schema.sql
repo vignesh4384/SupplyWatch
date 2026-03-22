@@ -64,3 +64,25 @@ CREATE TABLE IF NOT EXISTS risk_summary (
     last_updated TEXT NOT NULL DEFAULT (datetime('now')),
     trend REAL NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS vessel_positions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    mmsi TEXT NOT NULL,
+    name TEXT,
+    ship_type INTEGER,
+    ship_type_label TEXT,
+    lat REAL NOT NULL,
+    lng REAL NOT NULL,
+    speed REAL,
+    heading REAL,
+    nav_status INTEGER,
+    zone TEXT,
+    is_dark INTEGER DEFAULT 0,
+    recorded_at TEXT NOT NULL,
+    UNIQUE(mmsi, recorded_at)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vp_mmsi ON vessel_positions(mmsi);
+CREATE INDEX IF NOT EXISTS idx_vp_zone ON vessel_positions(zone);
+CREATE INDEX IF NOT EXISTS idx_vp_recorded ON vessel_positions(recorded_at);
+CREATE INDEX IF NOT EXISTS idx_vp_speed ON vessel_positions(speed);

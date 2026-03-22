@@ -196,3 +196,49 @@ CRISIS_ZONES = [
 GEOPOLITICAL_CRISIS_BOOST = 40  # Added to the Geopolitical domain base score
 MARITIME_CRISIS_BOOST = 30       # Added to Maritime domain base score
 ENERGY_CRISIS_BOOST = 25         # Added to Energy domain base score
+
+# ──────────────────────────────────────────────
+# AISstream Configuration
+# ──────────────────────────────────────────────
+AISSTREAM_API_KEY = os.getenv("AISSTREAM_API_KEY", "")
+
+# Bounding boxes for AIS watch zones (priority = smaller number wins when overlapping)
+AIS_BOUNDING_BOXES = {
+    "hormuz":      {"sw": [21.0, 50.0], "ne": [27.0, 62.0], "priority": 1},
+    "gulf_aden":   {"sw": [10.0, 43.0], "ne": [15.0, 53.0], "priority": 2},
+    "red_sea":     {"sw": [10.0, 40.0], "ne": [22.0, 50.0], "priority": 3},
+    "arabian_sea": {"sw": [5.0, 55.0],  "ne": [25.0, 75.0], "priority": 4},
+}
+
+# Only track commercially relevant vessel types
+AIS_VESSEL_TYPE_WHITELIST = set(range(60, 90)) | {1003, 1004, 1016}
+
+# Ship type code → human-readable label
+SHIP_TYPE_LABELS = {
+    "cargo": (70, 79),
+    "tanker": (80, 89),
+    "passenger": (60, 69),
+}
+SHIP_TYPE_SPECIAL = {1003: "Tug", 1004: "Tug", 1016: "Offshore Supply"}
+
+def get_ship_type_label(ship_type: int) -> str:
+    """Return human-readable label for AIS ship type code."""
+    if ship_type <= 0:
+        return "Unknown"
+    if 70 <= ship_type <= 79:
+        return "Cargo"
+    if 80 <= ship_type <= 89:
+        return "Tanker"
+    if 60 <= ship_type <= 69:
+        return "Passenger"
+    return SHIP_TYPE_SPECIAL.get(ship_type, "Other")
+
+NAV_STATUS_LABELS = {
+    0: "Under way using engine",
+    1: "At anchor",
+    2: "Not under command",
+    3: "Restricted manoeuvrability",
+    5: "Moored",
+    8: "Under way sailing",
+    15: "Not defined",
+}

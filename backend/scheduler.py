@@ -202,6 +202,11 @@ async def refresh_all_data():
                 f"overall={summary['overall_score']}")
 
 
+def vessel_ttl_cleanup():
+    """Remove vessel positions older than 7 days."""
+    database.cleanup_old_positions()
+
+
 def start_scheduler():
     """Start the periodic scheduler."""
     scheduler.add_job(
@@ -211,5 +216,12 @@ def start_scheduler():
         id="refresh_all",
         replace_existing=True,
     )
+    scheduler.add_job(
+        vessel_ttl_cleanup,
+        "interval",
+        hours=1,
+        id="vessel_ttl_cleanup",
+        replace_existing=True,
+    )
     scheduler.start()
-    logger.info(f"Scheduler started: refresh every {FETCH_INTERVAL} minutes")
+    logger.info(f"Scheduler started: refresh every {FETCH_INTERVAL} minutes, vessel TTL cleanup every hour")

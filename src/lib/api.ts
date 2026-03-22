@@ -1,4 +1,4 @@
-import type { RiskSummary, RiskIndicator, RiskZone, Alert, TradeRoute, DomainScore, RiskHistoryPoint, DomainHistoryMap } from '../types/risk';
+import type { RiskSummary, RiskIndicator, RiskZone, Alert, TradeRoute, DomainScore, RiskHistoryPoint, DomainHistoryMap, VesselFeatureCollection, VesselTrackPoint } from '../types/risk';
 
 const BASE = '/api';
 
@@ -18,4 +18,9 @@ export const api = {
   getDomains:      () => fetchJson<DomainScore[]>('/risk/domains'),
   getDomainHistory:() => fetchJson<DomainHistoryMap>('/risk/domains/history'),
   refresh:         () => fetch(`${BASE}/refresh`, { method: 'POST' }),
+
+  // Vessel endpoints
+  getLiveVessels:  () => fetchJson<VesselFeatureCollection>('/v1/vessels/live'),
+  getVesselHistory:(mmsi: string, hours?: number) =>
+    fetchJson<{ mmsi: string; count: number; track: VesselTrackPoint[] }>(`/v1/vessels/history/${mmsi}${hours ? `?hours=${hours}` : ''}`),
 };

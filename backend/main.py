@@ -3,12 +3,15 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
 import database
 from routers.risk import router as risk_router
+from routers.vessels import router as vessels_router
+from routers.ai_assistant import router as ai_assistant_router
 from scheduler import start_scheduler, refresh_all_data
+from ws.ais_ingest import broadcast_subscribers, start as start_ais, stop as stop_ais
 
 # Configure logging
 logging.basicConfig(
@@ -30,8 +33,13 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(refresh_all_data())
     logger.info("Initial data fetch triggered in background")
 
+    # Start AISstream vessel ingestion
+    await start_ais()
+
     yield
 
+    # Stop AISstream on shutdown
+    await stop_ais()
     logger.info("SupplyWatch API shutting down...")
 
 
@@ -55,6 +63,25 @@ app.add_middleware(
 
 # Mount routes
 app.include_router(risk_router)
+app.include_router(vessels_router)
+app.include_router(ai_assistant_router)
+
+
+# WebSocket relay — pushes live vessel positions to Leaflet clients
+@app.websocket("/ws/vessels/live")
+async def vessel_live_feed(websocket: WebSocket):
+    """Stream live vessel GeoJSON features to connected map clients."""
+    await websocket.accept()
+    queue: asyncio.Queue = asyncio.Queue(maxsize=500)
+    broadcast_subscribers.add(queue)
+    try:
+        while True:
+            feature = await queue.get()
+            await websocket.send_json(feature)
+    except Exception:
+        pass
+    finally:
+        broadcast_subscribers.discard(queue)
 
 
 # Manual refresh endpoint

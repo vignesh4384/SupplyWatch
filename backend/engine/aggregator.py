@@ -8,6 +8,31 @@ import database
 logger = logging.getLogger(__name__)
 
 
+def _compute_vessel_maritime_boost() -> int:
+    """Compute additional maritime domain boost from live AIS vessel data.
+
+    Dark vessels add 5 points each (capped at +25).
+    High congestion ratio adds up to +10.
+    """
+    dark = database.get_dark_vessels(hours=6)
+    dark_boost = min(25, len(dark) * 5)
+
+    # Congestion: ratio of slow vessels to total in key chokepoints
+    congestion_boost = 0
+    for zone in ("hormuz", "red_sea"):
+        slow = database.get_slow_vessels(zone=zone, max_speed=3.0, hours=6)
+        counts = database.get_vessel_counts(zone=zone, hours=6)
+        total = sum(c["vessel_count"] for c in counts)
+        if total > 5:
+            ratio = len(slow) / total
+            if ratio > 0.3:
+                congestion_boost = max(congestion_boost, 10)
+            elif ratio > 0.15:
+                congestion_boost = max(congestion_boost, 5)
+
+    return dark_boost + congestion_boost
+
+
 def compute_all():
     """Run full scoring pipeline: domain scores → overall score → save everything."""
     indicators = database.get_indicators()
@@ -54,6 +79,12 @@ def compute_all():
                 domain_score = min(100, domain_score + GEOPOLITICAL_CRISIS_BOOST)
             elif domain_name == "Maritime":
                 domain_score = min(100, domain_score + MARITIME_CRISIS_BOOST)
+                # Enhance with live vessel data: dark vessels and congestion
+                try:
+                    vessel_boost = _compute_vessel_maritime_boost()
+                    domain_score = min(100, domain_score + vessel_boost)
+                except Exception:
+                    pass  # Vessel data unavailable — skip
             elif domain_name == "Energy":
                 domain_score = min(100, domain_score + ENERGY_CRISIS_BOOST)
 

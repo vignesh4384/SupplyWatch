@@ -4,7 +4,7 @@ import sqlite3
 import os
 from datetime import datetime, timezone
 from contextlib import contextmanager
-from config import DB_PATH, STATIC_INDICATORS, TRADE_ROUTES, DOMAINS, risk_level as calc_risk_level
+from config import DB_PATH, STATIC_INDICATORS, TRADE_ROUTES, DOMAINS, risk_level as calc_risk_level, NAV_STATUS_LABELS
 
 # If DB_PATH is absolute (e.g. /home/data/supplywatch.db on Azure), use it directly
 DB_FILE = DB_PATH if os.path.isabs(DB_PATH) else os.path.join(os.path.dirname(__file__), DB_PATH)
@@ -254,3 +254,178 @@ def get_routes() -> list[dict]:
             "points": rt["points"],
         })
     return routes
+
+
+# ── VESSEL POSITIONS ──
+
+def insert_vessel_position(pos: dict):
+    """Insert a vessel position, silently skip duplicates."""
+    with get_db() as db:
+        db.execute("""
+            INSERT OR IGNORE INTO vessel_positions
+            (mmsi, name, ship_type, ship_type_label, lat, lng, speed, heading, nav_status, zone, is_dark, recorded_at)
+            VALUES (:mmsi, :name, :ship_type, :ship_type_label, :lat, :lng, :speed, :heading, :nav_status, :zone, :is_dark, :recorded_at)
+        """, pos)
+
+
+def get_live_vessels(minutes: int = 15) -> list[dict]:
+    """Latest position per MMSI within the given time window."""
+    with get_db() as db:
+        rows = db.execute("""
+            SELECT vp.* FROM vessel_positions vp
+            INNER JOIN (
+                SELECT mmsi, MAX(recorded_at) as max_ts
+                FROM vessel_positions
+                WHERE recorded_at >= datetime('now', ? || ' minutes')
+                GROUP BY mmsi
+            ) latest ON vp.mmsi = latest.mmsi AND vp.recorded_at = latest.max_ts
+            ORDER BY vp.recorded_at DESC
+        """, (f"-{minutes}",)).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_vessels_by_zone(zone: str, hours: int = 24) -> list[dict]:
+    """All positions in a zone for the last N hours."""
+    with get_db() as db:
+        rows = db.execute("""
+            SELECT * FROM vessel_positions
+            WHERE zone = ? AND recorded_at >= datetime('now', ? || ' hours')
+            ORDER BY recorded_at DESC
+        """, (zone, f"-{hours}")).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_dark_vessels(zone: str | None = None, hours: int = 6) -> list[dict]:
+    """Vessels flagged as dark/suspicious."""
+    with get_db() as db:
+        if zone:
+            rows = db.execute("""
+                SELECT * FROM vessel_positions
+                WHERE is_dark = 1 AND zone = ? AND recorded_at >= datetime('now', ? || ' hours')
+                ORDER BY recorded_at DESC
+            """, (zone, f"-{hours}")).fetchall()
+        else:
+            rows = db.execute("""
+                SELECT * FROM vessel_positions
+                WHERE is_dark = 1 AND recorded_at >= datetime('now', ? || ' hours')
+                ORDER BY recorded_at DESC
+            """, (f"-{hours}",)).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_slow_vessels(zone: str | None = None, max_speed: float = 2.0, hours: int = 6) -> list[dict]:
+    """Vessels moving below a speed threshold."""
+    with get_db() as db:
+        if zone:
+            rows = db.execute("""
+                SELECT vp.* FROM vessel_positions vp
+                INNER JOIN (
+                    SELECT mmsi, MAX(recorded_at) as max_ts
+                    FROM vessel_positions
+                    WHERE zone = ? AND speed < ? AND speed IS NOT NULL
+                    AND recorded_at >= datetime('now', ? || ' hours')
+                    GROUP BY mmsi
+                ) latest ON vp.mmsi = latest.mmsi AND vp.recorded_at = latest.max_ts
+                ORDER BY vp.speed ASC
+            """, (zone, max_speed, f"-{hours}")).fetchall()
+        else:
+            rows = db.execute("""
+                SELECT vp.* FROM vessel_positions vp
+                INNER JOIN (
+                    SELECT mmsi, MAX(recorded_at) as max_ts
+                    FROM vessel_positions
+                    WHERE speed < ? AND speed IS NOT NULL
+                    AND recorded_at >= datetime('now', ? || ' hours')
+                    GROUP BY mmsi
+                ) latest ON vp.mmsi = latest.mmsi AND vp.recorded_at = latest.max_ts
+                ORDER BY vp.speed ASC
+            """, (max_speed, f"-{hours}")).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_vessel_counts(zone: str | None = None, hours: int = 24) -> list[dict]:
+    """Count vessels by zone and ship type label."""
+    with get_db() as db:
+        if zone:
+            rows = db.execute("""
+                SELECT zone, ship_type_label, COUNT(DISTINCT mmsi) as vessel_count
+                FROM vessel_positions
+                WHERE zone = ? AND recorded_at >= datetime('now', ? || ' hours')
+                GROUP BY zone, ship_type_label
+                ORDER BY vessel_count DESC
+            """, (zone, f"-{hours}")).fetchall()
+        else:
+            rows = db.execute("""
+                SELECT zone, ship_type_label, COUNT(DISTINCT mmsi) as vessel_count
+                FROM vessel_positions
+                WHERE recorded_at >= datetime('now', ? || ' hours')
+                GROUP BY zone, ship_type_label
+                ORDER BY zone, vessel_count DESC
+            """, (f"-{hours}",)).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_vessel_history(mmsi: str, hours: int = 24) -> list[dict]:
+    """Position trail for one vessel."""
+    with get_db() as db:
+        rows = db.execute("""
+            SELECT lat, lng, speed, heading, zone, recorded_at
+            FROM vessel_positions
+            WHERE mmsi = ? AND recorded_at >= datetime('now', ? || ' hours')
+            ORDER BY recorded_at ASC
+        """, (mmsi, f"-{hours}")).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_vessel_risk_score(zone: str) -> dict:
+    """Compute a composite vessel-derived risk score for a zone (0-100)."""
+    dark = get_dark_vessels(zone=zone, hours=6)
+    slow = get_slow_vessels(zone=zone, max_speed=3.0, hours=6)
+    counts = get_vessel_counts(zone=zone, hours=24)
+    total_vessels = sum(c["vessel_count"] for c in counts)
+
+    dark_count = len(dark)
+    slow_count = len(slow)
+
+    # Compute traffic drop % vs 7-day average
+    with get_db() as db:
+        row = db.execute("""
+            SELECT COUNT(DISTINCT mmsi) as avg_count
+            FROM vessel_positions
+            WHERE zone = ? AND recorded_at >= datetime('now', '-7 days')
+        """, (zone,)).fetchone()
+        weekly_unique = row["avg_count"] if row else 0
+        daily_avg = weekly_unique / 7 if weekly_unique > 0 else 0
+
+    traffic_drop_pct = 0
+    if daily_avg > 0:
+        traffic_drop_pct = max(0, ((daily_avg - total_vessels) / daily_avg) * 100)
+
+    score = min(100, int(
+        (dark_count * 15) +
+        (slow_count * 5) +
+        (traffic_drop_pct * 0.3)
+    ))
+
+    return {
+        "zone": zone,
+        "score": score,
+        "components": {
+            "dark_vessel_count": dark_count,
+            "slow_vessel_count": slow_count,
+            "total_vessels_24h": total_vessels,
+            "traffic_drop_pct": round(traffic_drop_pct, 1),
+        },
+        "computed_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def cleanup_old_positions():
+    """Delete vessel positions older than 7 days."""
+    with get_db() as db:
+        result = db.execute(
+            "DELETE FROM vessel_positions WHERE recorded_at < datetime('now', '-7 days')"
+        )
+        if result.rowcount > 0:
+            import logging
+            logging.getLogger(__name__).info(f"TTL cleanup: removed {result.rowcount} old vessel positions")

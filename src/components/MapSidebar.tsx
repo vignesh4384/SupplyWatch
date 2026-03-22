@@ -120,6 +120,20 @@ export default function MapSidebar({ summary, zones, routes, onZoneClick }: MapS
             {item.label}
           </div>
         ))}
+        <div className="mt-2 pt-2 border-t border-border">
+          <div className="text-[8px] font-bold uppercase tracking-[2px] text-text-dim mb-1.5">AIS Vessels</div>
+          {[
+            { color: 'bg-amber-400', label: 'Tanker' },
+            { color: 'bg-cyan-400', label: 'Cargo' },
+            { color: 'bg-slate-400', label: 'Other / Unknown' },
+            { color: 'bg-red-500', label: 'Dark / Suspicious' },
+          ].map(item => (
+            <div key={item.label} className="flex items-center gap-2 mb-1.5 text-[10px] text-text-dim">
+              <div className={`w-[7px] h-[7px] rounded-full ${item.color}`} />
+              {item.label}
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );

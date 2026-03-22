@@ -71,3 +71,39 @@ export interface DomainHistoryPoint {
 }
 
 export type DomainHistoryMap = Record<string, DomainHistoryPoint[]>;
+
+// ── Vessel Types (AIS) ──
+
+export interface VesselProperties {
+  mmsi: string;
+  name: string;
+  ship_type: number;
+  ship_type_label: string;
+  speed: number;
+  heading: number;
+  nav_status: number;
+  nav_status_label: string;
+  zone: string;
+  is_dark: boolean;
+  recorded_at: string;
+}
+
+export interface VesselFeature {
+  type: 'Feature';
+  geometry: { type: 'Point'; coordinates: [number, number] };
+  properties: VesselProperties;
+}
+
+export interface VesselFeatureCollection {
+  type: 'FeatureCollection';
+  features: VesselFeature[];
+}
+
+export interface VesselTrackPoint {
+  lat: number;
+  lng: number;
+  speed: number;
+  heading: number;
+  zone: string;
+  recorded_at: string;
+}
