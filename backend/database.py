@@ -341,19 +341,31 @@ def get_vessels_by_zone(zone: str, hours: int = 24) -> list[dict]:
 
 
 def get_dark_vessels(zone: str | None = None, hours: int = 6) -> list[dict]:
-    """Vessels flagged as dark/suspicious."""
+    """Unique vessels whose latest position is flagged dark/suspicious."""
     with get_db() as db:
         if zone:
             rows = db.execute("""
-                SELECT * FROM vessel_positions
-                WHERE is_dark = 1 AND zone = ? AND recorded_at >= datetime('now', ? || ' hours')
-                ORDER BY recorded_at DESC
+                SELECT vp.* FROM vessel_positions vp
+                INNER JOIN (
+                    SELECT mmsi, MAX(recorded_at) as max_ts
+                    FROM vessel_positions
+                    WHERE zone = ? AND recorded_at >= datetime('now', ? || ' hours')
+                    GROUP BY mmsi
+                ) latest ON vp.mmsi = latest.mmsi AND vp.recorded_at = latest.max_ts
+                WHERE vp.is_dark = 1
+                ORDER BY vp.recorded_at DESC
             """, (zone, f"-{hours}")).fetchall()
         else:
             rows = db.execute("""
-                SELECT * FROM vessel_positions
-                WHERE is_dark = 1 AND recorded_at >= datetime('now', ? || ' hours')
-                ORDER BY recorded_at DESC
+                SELECT vp.* FROM vessel_positions vp
+                INNER JOIN (
+                    SELECT mmsi, MAX(recorded_at) as max_ts
+                    FROM vessel_positions
+                    WHERE recorded_at >= datetime('now', ? || ' hours')
+                    GROUP BY mmsi
+                ) latest ON vp.mmsi = latest.mmsi AND vp.recorded_at = latest.max_ts
+                WHERE vp.is_dark = 1
+                ORDER BY vp.recorded_at DESC
             """, (f"-{hours}",)).fetchall()
         return [dict(r) for r in rows]
 
