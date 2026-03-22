@@ -124,6 +124,12 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
   const [showVessels, setShowVessels] = useState(true);
   const showVesselsRef = useRef(true);
 
+  // Stable refs for zones/routes so initMap doesn't re-create on data refresh
+  const zonesRef = useRef(zones);
+  const routesRef = useRef(routes);
+  zonesRef.current = zones;
+  routesRef.current = routes;
+
   const initMap = useCallback(() => {
     if (!containerRef.current || initRef.current) return;
     initRef.current = true;
@@ -146,7 +152,7 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
     const categories = ['economic', 'disaster', 'maritime', 'geopolitical'];
     categories.forEach(cat => {
       const group = L.layerGroup();
-      zones.filter(z => z.category === cat).forEach(zone => {
+      zonesRef.current.filter(z => z.category === cat).forEach(zone => {
         const color = riskColors[zone.riskLevel];
         const r = 6 + zone.score / 14;
 
@@ -181,7 +187,7 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
 
     // Trade route polylines
     const routeGroup = L.layerGroup();
-    routes.forEach(route => {
+    routesRef.current.forEach(route => {
       L.polyline(route.points as L.LatLngExpression[], {
         color: routeColors[route.status],
         weight: 2,
@@ -205,7 +211,8 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
     trackLayerRef.current = trackLayer;
 
     mapRef.current = map;
-  }, [zones, routes]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Stable — uses zonesRef/routesRef instead of props
 
   // Add or update a vessel marker
   const upsertVessel = useCallback((feature: VesselFeature) => {
