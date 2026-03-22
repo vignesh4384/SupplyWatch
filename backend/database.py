@@ -310,18 +310,22 @@ def insert_vessel_position(pos: dict):
 
 
 def get_live_vessels(minutes: int = 15) -> list[dict]:
-    """Latest position per MMSI within the given time window."""
+    """Latest position per MMSI. Shows all vessels whose last known position
+    is within a monitored zone (zone IS NOT NULL), regardless of when they
+    last reported — so anchored/dark vessels stay visible. Only vessels that
+    moved outside all zones (zone IS NULL) or have no data within the retention
+    window are excluded."""
     with get_db() as db:
         rows = db.execute("""
             SELECT vp.* FROM vessel_positions vp
             INNER JOIN (
                 SELECT mmsi, MAX(recorded_at) as max_ts
                 FROM vessel_positions
-                WHERE recorded_at >= datetime('now', ? || ' minutes')
                 GROUP BY mmsi
             ) latest ON vp.mmsi = latest.mmsi AND vp.recorded_at = latest.max_ts
+            WHERE vp.zone IS NOT NULL
             ORDER BY vp.recorded_at DESC
-        """, (f"-{minutes}",)).fetchall()
+        """).fetchall()
         return [dict(r) for r in rows]
 
 
