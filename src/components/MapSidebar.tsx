@@ -123,13 +123,16 @@ export default function MapSidebar({ summary, zones, routes, onZoneClick }: MapS
         <div className="mt-2 pt-2 border-t border-border">
           <div className="text-[8px] font-bold uppercase tracking-[2px] text-text-dim mb-1.5">AIS Vessels</div>
           {[
-            { color: 'bg-amber-400', label: 'Tanker' },
-            { color: 'bg-cyan-400', label: 'Cargo' },
-            { color: 'bg-slate-400', label: 'Other / Unknown' },
-            { color: 'bg-red-500', label: 'Dark / Suspicious' },
+            { fill: '#f59e0b', label: 'Tanker' },
+            { fill: '#06b6d4', label: 'Cargo' },
+            { fill: '#94a3b8', label: 'Other / Unknown' },
+            { fill: '#ef4444', label: 'Dark / Suspicious' },
           ].map(item => (
             <div key={item.label} className="flex items-center gap-2 mb-1.5 text-[10px] text-text-dim">
-              <div className={`w-[7px] h-[7px] rounded-full ${item.color}`} />
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2 L16 8 L17 18 L15 22 L12 20 L9 22 L7 18 L8 8 Z"
+                  fill={item.fill} stroke="rgba(255,255,255,0.7)" strokeWidth="1.2" strokeLinejoin="round"/>
+              </svg>
               {item.label}
             </div>
           ))}

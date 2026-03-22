@@ -39,23 +39,27 @@ function getVesselColor(props: VesselProperties): string {
 
 function createVesselIcon(props: VesselProperties): L.DivIcon {
   const color = getVesselColor(props);
-  const dotSize = props.is_dark ? 14 : 12;
-  const hitbox = 28; // larger invisible click target
+  const hitbox = 32;
+  const shipSize = 22;
+  const rotation = props.heading || 0;
   const pulseClass = props.is_dark ? 'vessel-pulse' : '';
+
+  // SVG ship silhouette — points north by default, rotated by heading
+  const shipSvg = `
+    <svg width="${shipSize}" height="${shipSize}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+      style="transform:rotate(${rotation}deg);filter:drop-shadow(0 0 ${props.is_dark ? 6 : 3}px ${color}80);">
+      <path d="M12 2 L16 8 L17 18 L15 22 L12 20 L9 22 L7 18 L8 8 Z"
+        fill="${color}" stroke="rgba(255,255,255,0.85)" stroke-width="1.2" stroke-linejoin="round"/>
+      <line x1="12" y1="4" x2="12" y2="10" stroke="rgba(255,255,255,0.6)" stroke-width="1"/>
+    </svg>`;
 
   return L.divIcon({
     className: 'vessel-marker',
-    html: `<div style="
+    html: `<div class="${pulseClass}" style="
       width:${hitbox}px;height:${hitbox}px;
       display:flex;align-items:center;justify-content:center;
       cursor:pointer;
-    "><div class="${pulseClass}" style="
-      width:${dotSize}px;height:${dotSize}px;
-      background:${color};
-      border-radius:50%;
-      border:1.5px solid rgba(255,255,255,0.8);
-      box-shadow:0 0 ${props.is_dark ? 8 : 4}px ${color}80;
-    "></div></div>`,
+    ">${shipSvg}</div>`,
     iconSize: [hitbox, hitbox],
     iconAnchor: [hitbox / 2, hitbox / 2],
   });
