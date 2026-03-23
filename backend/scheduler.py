@@ -15,6 +15,7 @@ from fetchers.yfinance_fetcher import fetch_yfinance_indicators
 from fetchers.nasa_fetcher import fetch_nasa_eonet
 from engine.aggregator import compute_all
 from config import FETCH_INTERVAL, STATIC_INDICATORS, CRISIS_ZONES
+from enrichment.vessel_type_enricher import enrich_unknown_vessels
 
 logger = logging.getLogger(__name__)
 
@@ -223,5 +224,12 @@ def start_scheduler():
         id="vessel_ttl_cleanup",
         replace_existing=True,
     )
+    scheduler.add_job(
+        enrich_unknown_vessels,
+        "interval",
+        minutes=10,
+        id="vessel_type_enrichment",
+        replace_existing=True,
+    )
     scheduler.start()
-    logger.info(f"Scheduler started: refresh every {FETCH_INTERVAL} minutes, vessel TTL cleanup every hour")
+    logger.info(f"Scheduler started: refresh every {FETCH_INTERVAL} minutes, vessel TTL cleanup every hour, vessel type enrichment every 10 minutes")

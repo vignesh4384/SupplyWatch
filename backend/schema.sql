@@ -108,3 +108,13 @@ CREATE INDEX IF NOT EXISTS idx_vzt_mmsi ON vessel_zone_transitions(mmsi);
 CREATE INDEX IF NOT EXISTS idx_vzt_from ON vessel_zone_transitions(from_zone);
 CREATE INDEX IF NOT EXISTS idx_vzt_to ON vessel_zone_transitions(to_zone);
 CREATE INDEX IF NOT EXISTS idx_vzt_time ON vessel_zone_transitions(transited_at);
+
+-- Persistent vessel registry: caches MMSI → vessel type mappings
+CREATE TABLE IF NOT EXISTS vessel_registry (
+    mmsi TEXT PRIMARY KEY,
+    ship_type INTEGER NOT NULL,
+    ship_type_label TEXT NOT NULL,
+    name TEXT,
+    source TEXT NOT NULL DEFAULT 'ais',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

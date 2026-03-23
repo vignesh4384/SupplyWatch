@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 # Shared broadcast queue set — WebSocket relay route adds/removes subscriber queues
 broadcast_subscribers: set[asyncio.Queue] = set()
 
+# In-memory cache: MMSI → {ship_type, ship_type_label, name} — avoids DB hit per message
+_type_cache: dict[str, dict] = {}
+
 # Connection state
 _running = False
 _task: asyncio.Task | None = None
@@ -73,14 +76,23 @@ def _parse_position_report(msg: dict) -> dict | None:
         return None
 
     ship_type = meta.get("ShipType", 0)
-    # AIS PositionReport (msg types 1/2/3) often lacks ship type (-1 or 0 = unknown).
-    # Accept unknown types — they'll get labeled correctly when static data arrives.
-    # Only reject if ship type IS known and NOT in whitelist.
-    if ship_type > 0 and ship_type not in AIS_VESSEL_TYPE_WHITELIST:
-        return None
 
     mmsi = str(meta.get("MMSI", ""))
     if not mmsi:
+        return None
+
+    # If type is unknown, try resolving from in-memory cache or persistent registry
+    if ship_type <= 0:
+        cached = _type_cache.get(mmsi)
+        if not cached:
+            cached = database.lookup_vessel_registry(mmsi)
+            if cached:
+                _type_cache[mmsi] = cached
+        if cached and cached["ship_type"] > 0:
+            ship_type = cached["ship_type"]
+
+    # Only reject if ship type IS known and NOT in whitelist.
+    if ship_type > 0 and ship_type not in AIS_VESSEL_TYPE_WHITELIST:
         return None
 
     lat = position.get("Latitude")
@@ -106,9 +118,13 @@ def _parse_position_report(msg: dict) -> dict | None:
     if not timestamp.endswith("Z") and "+" not in timestamp:
         timestamp = timestamp + "Z"
 
+    name = (meta.get("ShipName") or "").strip() or None
+    if not name and mmsi in _type_cache:
+        name = _type_cache[mmsi].get("name")
+
     return {
         "mmsi": mmsi,
-        "name": (meta.get("ShipName") or "").strip() or None,
+        "name": name,
         "ship_type": ship_type,
         "ship_type_label": ship_type_label,
         "lat": lat,
@@ -147,6 +163,10 @@ def _handle_static_data(msg: dict) -> None:
             SET ship_type = ?, ship_type_label = ?, name = COALESCE(?, name)
             WHERE mmsi = ? AND (ship_type <= 0 OR ship_type IS NULL)
         """, (ship_type, ship_type_label, name, mmsi))
+
+    # Persist to vessel registry and update in-memory cache
+    database.upsert_vessel_registry(mmsi, ship_type, ship_type_label, name, source="ais")
+    _type_cache[mmsi] = {"ship_type": ship_type, "ship_type_label": ship_type_label, "name": name}
 
     logger.debug("AISstream: static data for MMSI %s → type=%d (%s) name=%s", mmsi, ship_type, ship_type_label, name)
 

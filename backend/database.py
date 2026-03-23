@@ -532,6 +532,64 @@ def get_vessel_risk_score(zone: str) -> dict:
     }
 
 
+# ── VESSEL REGISTRY ──
+
+def upsert_vessel_registry(mmsi: str, ship_type: int, ship_type_label: str, name: str | None, source: str = "ais"):
+    """Insert or update a vessel registry entry. AIS source takes priority over external."""
+    with get_db() as db:
+        db.execute("""
+            INSERT INTO vessel_registry (mmsi, ship_type, ship_type_label, name, source, updated_at)
+            VALUES (?, ?, ?, ?, ?, datetime('now'))
+            ON CONFLICT(mmsi) DO UPDATE SET
+                ship_type = CASE WHEN excluded.source = 'ais' OR vessel_registry.ship_type <= 0
+                    THEN excluded.ship_type ELSE vessel_registry.ship_type END,
+                ship_type_label = CASE WHEN excluded.source = 'ais' OR vessel_registry.ship_type <= 0
+                    THEN excluded.ship_type_label ELSE vessel_registry.ship_type_label END,
+                name = COALESCE(excluded.name, vessel_registry.name),
+                source = CASE WHEN excluded.source = 'ais' THEN 'ais' ELSE vessel_registry.source END,
+                updated_at = datetime('now')
+        """, (mmsi, ship_type, ship_type_label, name, source))
+
+
+def lookup_vessel_registry(mmsi: str) -> dict | None:
+    """Look up a single MMSI in the vessel registry."""
+    with get_db() as db:
+        row = db.execute(
+            "SELECT ship_type, ship_type_label, name FROM vessel_registry WHERE mmsi = ? AND ship_type > 0",
+            (mmsi,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def get_unknown_mmsis(limit: int = 20) -> list[str]:
+    """Get distinct MMSIs with unknown type that haven't been looked up externally yet."""
+    with get_db() as db:
+        rows = db.execute("""
+            SELECT DISTINCT vp.mmsi FROM vessel_positions vp
+            LEFT JOIN vessel_registry vr ON vp.mmsi = vr.mmsi
+            WHERE (vp.ship_type IS NULL OR vp.ship_type <= 0)
+              AND (vr.mmsi IS NULL OR (vr.ship_type <= 0 AND vr.source != 'external'))
+            ORDER BY vp.recorded_at DESC
+            LIMIT ?
+        """, (limit,)).fetchall()
+        return [r["mmsi"] for r in rows]
+
+
+def backfill_vessel_type(mmsi: str, ship_type: int, ship_type_label: str, name: str | None):
+    """Update all position and transition rows for this MMSI where type is unknown."""
+    with get_db() as db:
+        db.execute("""
+            UPDATE vessel_positions
+            SET ship_type = ?, ship_type_label = ?, name = COALESCE(?, name)
+            WHERE mmsi = ? AND (ship_type <= 0 OR ship_type IS NULL)
+        """, (ship_type, ship_type_label, name, mmsi))
+        db.execute("""
+            UPDATE vessel_zone_transitions
+            SET ship_type_label = ?
+            WHERE mmsi = ? AND (ship_type_label IS NULL OR ship_type_label = 'Unknown')
+        """, (ship_type_label, mmsi))
+
+
 def cleanup_old_positions():
     """Delete vessel positions older than 7 days."""
     with get_db() as db:
