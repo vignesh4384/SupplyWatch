@@ -203,6 +203,8 @@ async def _broadcast(feature: dict):
             queue.put_nowait(feature)
         except asyncio.QueueFull:
             dead.add(queue)
+    if dead:
+        logger.warning("Dropping %d slow WebSocket client(s) (queue full, max=500)", len(dead))
     broadcast_subscribers.difference_update(dead)
 
 
@@ -279,3 +281,13 @@ async def stop():
             pass
         _task = None
     logger.info("AISstream: ingestion stopped")
+
+
+def get_status() -> dict:
+    """Return current AIS ingestion status for health checks."""
+    return {
+        "running": _running,
+        "taskAlive": _task is not None and not _task.done(),
+        "subscriberCount": len(broadcast_subscribers),
+        "typeCacheSize": len(_type_cache),
+    }

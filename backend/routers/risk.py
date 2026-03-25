@@ -6,6 +6,7 @@ from typing import Optional
 import database
 from engine.aggregator import compute_all
 from services.ai_analyst import ask_analyst
+from ws.ais_ingest import get_status as get_ais_status
 
 router = APIRouter(prefix="/api")
 
@@ -122,6 +123,7 @@ async def health():
         "indicators": len(database.get_indicators()),
         "alerts": len(database.get_alerts(100)),
         "zones": len(database.get_zones()),
+        "ais": get_ais_status(),
     }
 
 

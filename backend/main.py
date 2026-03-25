@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 import database
@@ -68,20 +68,32 @@ app.include_router(ai_assistant_router)
 
 
 # WebSocket relay — pushes live vessel positions to Leaflet clients
+logger = logging.getLogger(__name__)
+
 @app.websocket("/ws/vessels/live")
 async def vessel_live_feed(websocket: WebSocket):
     """Stream live vessel GeoJSON features to connected map clients."""
     await websocket.accept()
     queue: asyncio.Queue = asyncio.Queue(maxsize=500)
     broadcast_subscribers.add(queue)
+    client_id = id(queue)
+    logger.info("WS client %s connected (total: %d)", client_id, len(broadcast_subscribers))
     try:
         while True:
-            feature = await queue.get()
+            try:
+                feature = await asyncio.wait_for(queue.get(), timeout=60.0)
+            except asyncio.TimeoutError:
+                # Keepalive ping — also detects dead connections
+                await websocket.send_json({"type": "ping"})
+                continue
             await websocket.send_json(feature)
-    except Exception:
-        pass
+    except WebSocketDisconnect:
+        logger.info("WS client %s disconnected normally", client_id)
+    except Exception as e:
+        logger.warning("WS client %s error: %s", client_id, e)
     finally:
         broadcast_subscribers.discard(queue)
+        logger.info("WS client %s removed (remaining: %d)", client_id, len(broadcast_subscribers))
 
 
 # Manual refresh endpoint

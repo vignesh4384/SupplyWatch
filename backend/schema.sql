@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS vessel_zone_transitions (
     mmsi TEXT NOT NULL,
     name TEXT,
     ship_type_label TEXT,
-    from_zone TEXT NOT NULL,
+    from_zone TEXT,
     to_zone TEXT,
     transited_at TEXT NOT NULL
 );

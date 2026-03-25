@@ -121,6 +121,8 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
   const trackLayerRef = useRef<L.LayerGroup | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const [vesselCount, setVesselCount] = useState(0);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [lastVesselUpdate, setLastVesselUpdate] = useState<number | null>(null);
   const [showVessels, setShowVessels] = useState(true);
   const showVesselsRef = useRef(true);
 
@@ -294,11 +296,17 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 
+        ws.onopen = () => {
+          setWsConnected(true);
+        };
+
         ws.onmessage = (event) => {
           try {
             const feature: VesselFeature = JSON.parse(event.data);
+            if (feature.type === 'ping') return; // Skip keepalive pings
             if (showVesselsRef.current) {
               upsertVessel(feature);
+              setLastVesselUpdate(Date.now());
             }
           } catch {
             // Skip malformed messages
@@ -307,6 +315,7 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
 
         ws.onclose = () => {
           wsRef.current = null;
+          setWsConnected(false);
           reconnectTimer = setTimeout(connect, 5000);
         };
 
@@ -314,6 +323,7 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
           ws.close();
         };
       } catch {
+        setWsConnected(false);
         reconnectTimer = setTimeout(connect, 5000);
       }
     }
@@ -447,7 +457,10 @@ export default function MapView({ zones, routes, flyToTarget }: MapViewProps) {
         <div>{zones.length} Active Risk Zones</div>
         <div className="mt-0.5">{routes.length} Trade Routes Monitored</div>
         {vesselCount > 0 && (
-          <div className="mt-0.5 text-cyan-400">{vesselCount} Live Vessels (AIS)</div>
+          <div className={`mt-0.5 ${wsConnected ? 'text-cyan-400' : 'text-yellow-400'}`}>
+            {vesselCount} Live Vessels (AIS)
+            {!wsConnected && ' — Reconnecting...'}
+          </div>
         )}
       </div>
     </div>

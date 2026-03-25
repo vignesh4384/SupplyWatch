@@ -36,6 +36,32 @@ def init_db():
             if col not in existing_cols:
                 db.execute(f"ALTER TABLE risk_summary ADD COLUMN {col} INTEGER NOT NULL DEFAULT 0")
 
+        # Auto-migrate: allow NULL in vessel_zone_transitions.from_zone for first-sighting entries
+        fz_notnull = any(
+            r[1] == "from_zone" and r[3] == 1  # notnull flag
+            for r in db.execute("PRAGMA table_info(vessel_zone_transitions)").fetchall()
+        )
+        if fz_notnull:
+            db.executescript("""
+                ALTER TABLE vessel_zone_transitions RENAME TO _vzt_old;
+                CREATE TABLE vessel_zone_transitions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    mmsi TEXT NOT NULL,
+                    name TEXT,
+                    ship_type_label TEXT,
+                    from_zone TEXT,
+                    to_zone TEXT,
+                    transited_at TEXT NOT NULL
+                );
+                INSERT INTO vessel_zone_transitions (id, mmsi, name, ship_type_label, from_zone, to_zone, transited_at)
+                    SELECT id, mmsi, name, ship_type_label, from_zone, to_zone, transited_at FROM _vzt_old;
+                DROP TABLE _vzt_old;
+                CREATE INDEX IF NOT EXISTS idx_vzt_mmsi ON vessel_zone_transitions(mmsi);
+                CREATE INDEX IF NOT EXISTS idx_vzt_from ON vessel_zone_transitions(from_zone);
+                CREATE INDEX IF NOT EXISTS idx_vzt_to ON vessel_zone_transitions(to_zone);
+                CREATE INDEX IF NOT EXISTS idx_vzt_time ON vessel_zone_transitions(transited_at);
+            """)
+
         # Seed static indicators if table is empty
         count = db.execute("SELECT COUNT(*) FROM indicators").fetchone()[0]
         if count == 0:
@@ -303,9 +329,20 @@ def insert_vessel_position(pos: dict):
                       None, new_zone, pos["recorded_at"]))
 
         db.execute("""
-            INSERT OR IGNORE INTO vessel_positions
+            INSERT INTO vessel_positions
             (mmsi, name, ship_type, ship_type_label, lat, lng, speed, heading, nav_status, zone, is_dark, recorded_at)
             VALUES (:mmsi, :name, :ship_type, :ship_type_label, :lat, :lng, :speed, :heading, :nav_status, :zone, :is_dark, :recorded_at)
+            ON CONFLICT(mmsi, recorded_at) DO UPDATE SET
+                lat = excluded.lat,
+                lng = excluded.lng,
+                speed = excluded.speed,
+                heading = excluded.heading,
+                nav_status = excluded.nav_status,
+                zone = excluded.zone,
+                is_dark = excluded.is_dark,
+                name = COALESCE(excluded.name, name),
+                ship_type = CASE WHEN excluded.ship_type > 0 THEN excluded.ship_type ELSE ship_type END,
+                ship_type_label = CASE WHEN excluded.ship_type > 0 THEN excluded.ship_type_label ELSE ship_type_label END
         """, pos)
 
 
