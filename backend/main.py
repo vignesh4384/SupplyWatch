@@ -36,16 +36,6 @@ async def lifespan(app: FastAPI):
     # Start AISstream vessel ingestion
     await start_ais()
 
-    # Background cleanup: remove old on-land vessel positions (non-blocking)
-    async def _land_cleanup():
-        try:
-            removed = database.cleanup_land_positions()
-            if removed:
-                logger.info("Background: purged %d on-land vessel positions", removed)
-        except Exception as e:
-            logger.warning("Land cleanup skipped: %s", e)
-    asyncio.create_task(_land_cleanup())
-
     yield
 
     # Stop AISstream on shutdown

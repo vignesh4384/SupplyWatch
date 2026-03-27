@@ -7,11 +7,6 @@ from datetime import datetime, timezone
 
 import websockets
 
-# Lazy-loaded: global-land-mask + numpy are heavy (~3 min on B1).
-# Imported on first use, not at startup, to avoid gunicorn timeout.
-_land_mask_globe = None
-_land_mask_checked = False
-
 import database
 from config import (
     AISSTREAM_API_KEY,
@@ -64,41 +59,6 @@ def _assign_zone(lat: float, lng: float) -> str | None:
     return matches[0][1]
 
 
-def _get_globe():
-    """Lazy-load global-land-mask on first call (avoids slow startup import)."""
-    global _land_mask_globe, _land_mask_checked
-    if not _land_mask_checked:
-        _land_mask_checked = True
-        try:
-            from global_land_mask import globe
-            _land_mask_globe = globe
-            logger.info("global-land-mask loaded successfully — land filter active")
-        except ImportError:
-            logger.warning("global-land-mask not available — land filter disabled")
-    return _land_mask_globe
-
-
-def _is_deep_inland(lat: float, lng: float, offset: float = 0.15) -> bool:
-    """Return True only if the point AND all surrounding points are on land.
-
-    Uses a ~15 km coastal buffer so vessels in ports, harbors, narrow
-    straits, and coastal waters are not rejected.  Only positions where
-    every neighbour is also land (i.e. clearly deep inland) are filtered.
-    """
-    globe = _get_globe()
-    if globe is None:
-        return False  # Library not available — skip filtering
-
-    if not globe.is_land(lat, lng):
-        return False  # Already in water — no filtering needed
-
-    # Check 4 cardinal neighbours at ~15 km offset
-    for dlat, dlng in [(offset, 0), (-offset, 0), (0, offset), (0, -offset)]:
-        if not globe.is_land(lat + dlat, lng + dlng):
-            return False  # Near a coastline — allow it
-    return True  # All neighbours are land — deep inland
-
-
 def _is_dark_vessel(speed: float | None, nav_status: int | None) -> bool:
     """Detect dark/suspicious vessel: moving slowly but claiming underway status."""
     if speed is None or nav_status is None:
@@ -138,11 +98,6 @@ def _parse_position_report(msg: dict) -> dict | None:
     lat = position.get("Latitude")
     lng = position.get("Longitude")
     if lat is None or lng is None:
-        return None
-
-    # Reject positions deep inland — check if ALL nearby points are also land
-    # (allows coastal/port vessels through, only blocks clearly-inland positions)
-    if _is_deep_inland(lat, lng):
         return None
 
     speed = position.get("Sog")  # Speed over ground
