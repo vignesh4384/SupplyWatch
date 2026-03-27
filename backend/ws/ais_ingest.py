@@ -5,9 +5,15 @@ import json
 import logging
 from datetime import datetime, timezone
 
-import numpy as np
 import websockets
-from global_land_mask import globe
+
+# Lazy import: global-land-mask + numpy are optional — if unavailable,
+# the land filter is skipped but the rest of the app works fine.
+try:
+    from global_land_mask import globe
+    _HAS_LAND_MASK = True
+except ImportError:
+    _HAS_LAND_MASK = False
 
 import database
 from config import (
@@ -68,6 +74,9 @@ def _is_deep_inland(lat: float, lng: float, offset: float = 0.15) -> bool:
     straits, and coastal waters are not rejected.  Only positions where
     every neighbour is also land (i.e. clearly deep inland) are filtered.
     """
+    if not _HAS_LAND_MASK:
+        return False  # Library not available — skip filtering
+
     if not globe.is_land(lat, lng):
         return False  # Already in water — no filtering needed
 
