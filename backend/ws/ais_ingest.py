@@ -7,13 +7,10 @@ from datetime import datetime, timezone
 
 import websockets
 
-# Lazy import: global-land-mask + numpy are optional — if unavailable,
-# the land filter is skipped but the rest of the app works fine.
-try:
-    from global_land_mask import globe
-    _HAS_LAND_MASK = True
-except ImportError:
-    _HAS_LAND_MASK = False
+# Lazy-loaded: global-land-mask + numpy are heavy (~3 min on B1).
+# Imported on first use, not at startup, to avoid gunicorn timeout.
+_land_mask_globe = None
+_land_mask_checked = False
 
 import database
 from config import (
@@ -67,6 +64,20 @@ def _assign_zone(lat: float, lng: float) -> str | None:
     return matches[0][1]
 
 
+def _get_globe():
+    """Lazy-load global-land-mask on first call (avoids slow startup import)."""
+    global _land_mask_globe, _land_mask_checked
+    if not _land_mask_checked:
+        _land_mask_checked = True
+        try:
+            from global_land_mask import globe
+            _land_mask_globe = globe
+            logger.info("global-land-mask loaded successfully — land filter active")
+        except ImportError:
+            logger.warning("global-land-mask not available — land filter disabled")
+    return _land_mask_globe
+
+
 def _is_deep_inland(lat: float, lng: float, offset: float = 0.15) -> bool:
     """Return True only if the point AND all surrounding points are on land.
 
@@ -74,7 +85,8 @@ def _is_deep_inland(lat: float, lng: float, offset: float = 0.15) -> bool:
     straits, and coastal waters are not rejected.  Only positions where
     every neighbour is also land (i.e. clearly deep inland) are filtered.
     """
-    if not _HAS_LAND_MASK:
+    globe = _get_globe()
+    if globe is None:
         return False  # Library not available — skip filtering
 
     if not globe.is_land(lat, lng):
