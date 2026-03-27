@@ -27,6 +27,10 @@ async def lifespan(app: FastAPI):
     """Startup: init DB, start scheduler, trigger first fetch."""
     logger.info("SupplyWatch API starting up...")
     database.init_db()
+    # One-time cleanup: remove any existing vessel positions on land
+    removed = database.cleanup_land_positions()
+    if removed:
+        logger.info("Startup: purged %d on-land vessel positions from DB", removed)
     start_scheduler()
 
     # Trigger first data fetch in background (don't block startup)

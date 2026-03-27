@@ -636,3 +636,33 @@ def cleanup_old_positions():
         if result.rowcount > 0:
             import logging
             logging.getLogger(__name__).info(f"TTL cleanup: removed {result.rowcount} old vessel positions")
+
+
+def cleanup_land_positions():
+    """Remove existing vessel positions that fall on land (one-time data fix)."""
+    try:
+        from global_land_mask import globe
+    except ImportError:
+        return 0
+
+    import logging
+    log = logging.getLogger(__name__)
+
+    removed = 0
+    with get_db() as db:
+        rows = db.execute("SELECT id, lat, lng FROM vessel_positions").fetchall()
+        def is_deep_inland(lat, lng, offset=0.15):
+            if not globe.is_land(lat, lng):
+                return False
+            for dlat, dlng in [(offset, 0), (-offset, 0), (0, offset), (0, -offset)]:
+                if not globe.is_land(lat + dlat, lng + dlng):
+                    return False
+            return True
+
+        land_ids = [row["id"] for row in rows if is_deep_inland(row["lat"], row["lng"])]
+        if land_ids:
+            placeholders = ",".join("?" * len(land_ids))
+            db.execute(f"DELETE FROM vessel_positions WHERE id IN ({placeholders})", land_ids)
+            removed = len(land_ids)
+            log.info("Land cleanup: removed %d vessel positions on land out of %d total", removed, len(rows))
+    return removed
