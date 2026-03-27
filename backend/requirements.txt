@@ -8,4 +8,5 @@ python-dotenv==1.0.1
 yfinance
 anthropic
 websockets>=12.0
+numpy
 global-land-mask==1.0.0

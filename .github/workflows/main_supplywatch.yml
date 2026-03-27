@@ -33,7 +33,8 @@ jobs:
           zip -r ${{ github.workspace }}/release.zip . \
             -x './.env' './supplywatch.db' './__pycache__/*' \
                './engine/__pycache__/*' './fetchers/__pycache__/*' \
-               './routers/__pycache__/*' './services/__pycache__/*'
+               './routers/__pycache__/*' './services/__pycache__/*' \
+               './ws/__pycache__/*' './enrichment/__pycache__/*'
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
