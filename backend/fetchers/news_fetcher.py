@@ -2,7 +2,7 @@
 
 import logging
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import httpx
 from config import NEWS_API_KEY, CRITICAL_KEYWORDS, WARNING_KEYWORDS
 
@@ -23,7 +23,8 @@ async def fetch_news() -> list[dict]:
         async with httpx.AsyncClient() as client:
             resp = await client.get(NEWSAPI_URL, params={
                 "q": "(supply chain AND (disruption OR crisis OR risk)) OR (shipping AND (attack OR blockade OR closure)) OR (oil AND (price OR shortage OR embargo)) OR (Hormuz OR Suez OR \"Red Sea\") OR (tariff AND trade AND war)",
-                "sortBy": "relevancy",
+                "sortBy": "publishedAt",
+                "from": (datetime.now(timezone.utc) - timedelta(days=3)).strftime("%Y-%m-%dT%H:%M:%S"),
                 "pageSize": 15,
                 "apiKey": NEWS_API_KEY,
                 "language": "en",
@@ -64,6 +65,8 @@ async def fetch_news() -> list[dict]:
             })
 
         logger.info(f"NewsAPI: {len(alerts)} alerts")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"NewsAPI HTTP {e.response.status_code}: {e}")
     except Exception as e:
         logger.error(f"NewsAPI fetch error: {e}")
 
